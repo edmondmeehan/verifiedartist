@@ -174,7 +174,7 @@ export const saveCanonicalRecord = createServerFn({ method: "POST" })
     const { data: inserted, error } = await supabase.from("canonical_records").insert({
       artist_id: data.artistId,
       version: nextVersion,
-      data: data.data,
+      data: data.data as never,
       is_current: true,
       created_by: context.userId,
     }).select().single();
