@@ -14,16 +14,352 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      artists: {
+        Row: {
+          bandsintown_id: string | null
+          created_at: string
+          id: string
+          name: string
+          official_site_url: string | null
+          org_id: string
+          spotify_id: string | null
+          status: Database["public"]["Enums"]["artist_status"]
+          updated_at: string
+          wikidata_qid: string | null
+          x_handle: string | null
+          youtube_channel_id: string | null
+        }
+        Insert: {
+          bandsintown_id?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          official_site_url?: string | null
+          org_id: string
+          spotify_id?: string | null
+          status?: Database["public"]["Enums"]["artist_status"]
+          updated_at?: string
+          wikidata_qid?: string | null
+          x_handle?: string | null
+          youtube_channel_id?: string | null
+        }
+        Update: {
+          bandsintown_id?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          official_site_url?: string | null
+          org_id?: string
+          spotify_id?: string | null
+          status?: Database["public"]["Enums"]["artist_status"]
+          updated_at?: string
+          wikidata_qid?: string | null
+          x_handle?: string | null
+          youtube_channel_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artists_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_queries: {
+        Row: {
+          artist_id: string
+          category: Database["public"]["Enums"]["audit_category"]
+          created_at: string
+          enabled: boolean
+          id: string
+          query_text: string
+        }
+        Insert: {
+          artist_id: string
+          category?: Database["public"]["Enums"]["audit_category"]
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          query_text: string
+        }
+        Update: {
+          artist_id?: string
+          category?: Database["public"]["Enums"]["audit_category"]
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          query_text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_queries_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_runs: {
+        Row: {
+          agent: Database["public"]["Enums"]["audit_agent"]
+          artist_id: string
+          discrepancies: Json | null
+          id: string
+          query_id: string | null
+          response_text: string | null
+          run_at: string
+          staleness_days: number | null
+          verdict: Database["public"]["Enums"]["audit_verdict"]
+        }
+        Insert: {
+          agent: Database["public"]["Enums"]["audit_agent"]
+          artist_id: string
+          discrepancies?: Json | null
+          id?: string
+          query_id?: string | null
+          response_text?: string | null
+          run_at?: string
+          staleness_days?: number | null
+          verdict?: Database["public"]["Enums"]["audit_verdict"]
+        }
+        Update: {
+          agent?: Database["public"]["Enums"]["audit_agent"]
+          artist_id?: string
+          discrepancies?: Json | null
+          id?: string
+          query_id?: string | null
+          response_text?: string | null
+          run_at?: string
+          staleness_days?: number | null
+          verdict?: Database["public"]["Enums"]["audit_verdict"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_runs_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_runs_query_id_fkey"
+            columns: ["query_id"]
+            isOneToOne: false
+            referencedRelation: "audit_queries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canonical_records: {
+        Row: {
+          artist_id: string
+          created_at: string
+          created_by: string | null
+          data: Json
+          id: string
+          is_current: boolean
+          version: number
+        }
+        Insert: {
+          artist_id: string
+          created_at?: string
+          created_by?: string | null
+          data: Json
+          id?: string
+          is_current?: boolean
+          version: number
+        }
+        Update: {
+          artist_id?: string
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          is_current?: boolean
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canonical_records_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      distribution_log: {
+        Row: {
+          artist_id: string
+          id: string
+          payload_summary: string | null
+          propagation_confirmed_at: string | null
+          pushed_at: string
+          sla_met: boolean | null
+          target: Database["public"]["Enums"]["dist_target"]
+        }
+        Insert: {
+          artist_id: string
+          id?: string
+          payload_summary?: string | null
+          propagation_confirmed_at?: string | null
+          pushed_at?: string
+          sla_met?: boolean | null
+          target: Database["public"]["Enums"]["dist_target"]
+        }
+        Update: {
+          artist_id?: string
+          id?: string
+          payload_summary?: string | null
+          propagation_confirmed_at?: string | null
+          pushed_at?: string
+          sla_met?: boolean | null
+          target?: Database["public"]["Enums"]["dist_target"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distribution_log_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      distribution_targets: {
+        Row: {
+          artist_id: string
+          config: Json | null
+          created_at: string
+          id: string
+          last_pushed_at: string | null
+          status: Database["public"]["Enums"]["dist_status"]
+          target: Database["public"]["Enums"]["dist_target"]
+          updated_at: string
+        }
+        Insert: {
+          artist_id: string
+          config?: Json | null
+          created_at?: string
+          id?: string
+          last_pushed_at?: string | null
+          status?: Database["public"]["Enums"]["dist_status"]
+          target: Database["public"]["Enums"]["dist_target"]
+          updated_at?: string
+        }
+        Update: {
+          artist_id?: string
+          config?: Json | null
+          created_at?: string
+          id?: string
+          last_pushed_at?: string | null
+          status?: Database["public"]["Enums"]["dist_status"]
+          target?: Database["public"]["Enums"]["dist_target"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distribution_targets_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_members: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          role: Database["public"]["Enums"]["org_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          role?: Database["public"]["Enums"]["org_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          role?: Database["public"]["Enums"]["org_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          plan: Database["public"]["Enums"]["plan_type"]
+          seats: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          plan?: Database["public"]["Enums"]["plan_type"]
+          seats?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          plan?: Database["public"]["Enums"]["plan_type"]
+          seats?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_org_member: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      org_role_of: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: Database["public"]["Enums"]["org_role"]
+      }
     }
     Enums: {
-      [_ in never]: never
+      artist_status: "active" | "paused" | "archived"
+      audit_agent: "chatgpt" | "claude" | "gemini" | "perplexity" | "grok"
+      audit_category: "tour" | "release" | "bio" | "tickets" | "general"
+      audit_verdict: "accurate" | "stale" | "wrong" | "missing" | "pending"
+      dist_status: "connected" | "pending" | "manual" | "error"
+      dist_target:
+        | "artist_site"
+        | "bandsintown"
+        | "songkick"
+        | "wikidata"
+        | "google_sitemap"
+        | "indexnow"
+        | "spotify"
+        | "x"
+      org_role: "owner" | "admin" | "member"
+      plan_type: "per_artist" | "enterprise"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +486,24 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      artist_status: ["active", "paused", "archived"],
+      audit_agent: ["chatgpt", "claude", "gemini", "perplexity", "grok"],
+      audit_category: ["tour", "release", "bio", "tickets", "general"],
+      audit_verdict: ["accurate", "stale", "wrong", "missing", "pending"],
+      dist_status: ["connected", "pending", "manual", "error"],
+      dist_target: [
+        "artist_site",
+        "bandsintown",
+        "songkick",
+        "wikidata",
+        "google_sitemap",
+        "indexnow",
+        "spotify",
+        "x",
+      ],
+      org_role: ["owner", "admin", "member"],
+      plan_type: ["per_artist", "enterprise"],
+    },
   },
 } as const
