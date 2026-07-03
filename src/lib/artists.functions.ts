@@ -62,9 +62,9 @@ export const listArtists = createServerFn({ method: "GET" })
 
     return artists.map((a) => {
       // Take latest run per agent (first occurrence since ordered desc)
-      const latestByAgent = new Map<string, { verdict: string; run_at: string }>();
+      const latestByAgent = new Map<string, { agent: string; verdict: string; run_at: string }>();
       for (const r of runsByArtist.get(a.id) ?? []) {
-        if (!latestByAgent.has(r.agent)) latestByAgent.set(r.agent, { verdict: r.verdict, run_at: r.run_at });
+        if (!latestByAgent.has(r.agent)) latestByAgent.set(r.agent, r);
       }
       const latestRuns = Array.from(latestByAgent.values());
       const lastAuditAt = latestRuns.length > 0
