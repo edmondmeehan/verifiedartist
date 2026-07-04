@@ -98,6 +98,24 @@ function EditPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const autoSync = useMutation({
+    mutationFn: () => syncFn({ data: { artistId } }),
+    onSuccess: (res) => {
+      setSnapshotHeadline(res.liveSnapshot.headline ?? "");
+      if (res.liveSnapshot.moreNote) setMoreNote(res.liveSnapshot.moreNote);
+      // Merge channels: replace any existing entry with same URL, then append new ones.
+      setChannels((prev) => {
+        const byUrl = new Map(prev.map((c) => [c.url.trim().toLowerCase(), c]));
+        for (const c of res.officialChannels) {
+          byUrl.set(c.url.trim().toLowerCase(), { name: c.name, url: c.url, description: c.description });
+        }
+        return Array.from(byUrl.values());
+      });
+      toast.success("Synced from canonical record. Review and Save.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (q.isLoading || !q.data) {
     return <div className="p-8 text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>;
   }
