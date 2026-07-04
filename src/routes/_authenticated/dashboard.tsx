@@ -87,7 +87,9 @@ function ArtistCard({ artist }: { artist: Awaited<ReturnType<typeof listArtists>
         <div>
           <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Artist</div>
           <h3 className="mt-1 font-display text-xl">{artist.name}</h3>
+          {artist.spotify_id && <LastSyncedBadge syncedAt={artist.spotify_synced_at} className="mt-2" />}
         </div>
+
         <div className="text-right">
           <div className={`font-display text-4xl leading-none ${tier.color}`}>
             {score === null ? "—" : score}
