@@ -350,3 +350,80 @@ function fmtHours(h: number): string {
   if (abs < 24) return `${abs.toFixed(1)}h`;
   return `${(abs / 24).toFixed(1)}d`;
 }
+
+type TimelineLog = {
+  id: string;
+  target: string;
+  pushed_at: string;
+  propagation_confirmed_at: string | null;
+  sla_met: boolean | null;
+};
+
+function TargetTimeline({ target, expected, logs }: { target: string; expected: number | null; logs: TimelineLog[] }) {
+  const sorted = [...logs].sort((a, b) => new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime());
+  return (
+    <div className="border-t border-border px-5 py-4">
+      <div className="mb-3 flex items-baseline justify-between">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          {target.replace(/_/g, " ")} · push timeline
+        </div>
+        <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          Expected {expected !== null ? fmtHours(expected) : "—"} · SLA 48h
+        </div>
+      </div>
+      {sorted.length === 0 ? (
+        <div className="text-xs text-muted-foreground">No pushes.</div>
+      ) : (
+        <ol className="space-y-2">
+          {sorted.map((l) => {
+            const pushed = new Date(l.pushed_at);
+            const confirmed = l.propagation_confirmed_at ? new Date(l.propagation_confirmed_at) : null;
+            const elapsedH = confirmed ? (confirmed.getTime() - pushed.getTime()) / 3600_000 : null;
+            const drift = elapsedH !== null && expected !== null ? elapsedH - expected : null;
+            const verdict: "met" | "missed" | "pending" =
+              l.sla_met === true ? "met" : l.sla_met === false ? "missed" : "pending";
+            const verdictClass =
+              verdict === "met" ? "text-verdict-accurate" : verdict === "missed" ? "text-verdict-wrong" : "text-muted-foreground";
+            return (
+              <li key={l.id} className="grid grid-cols-12 items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2">
+                <div className="col-span-3 font-mono text-[11px] text-muted-foreground">
+                  <div>Pushed</div>
+                  <div className="text-foreground">{format(pushed, "MMM d, HH:mm")}</div>
+                </div>
+                <div className="col-span-3 font-mono text-[11px] text-muted-foreground">
+                  <div>Confirmed</div>
+                  <div className={confirmed ? "text-foreground" : ""}>
+                    {confirmed ? format(confirmed, "MMM d, HH:mm") : "— pending —"}
+                  </div>
+                </div>
+                <div className="col-span-2 font-mono text-[11px] text-muted-foreground">
+                  <div>Elapsed</div>
+                  <div className="text-foreground">{elapsedH !== null ? fmtHours(elapsedH) : "—"}</div>
+                </div>
+                <div className="col-span-2 font-mono text-[11px] text-muted-foreground">
+                  <div>Drift</div>
+                  <div
+                    className={
+                      drift === null
+                        ? ""
+                        : drift > 6
+                          ? "text-verdict-wrong"
+                          : drift > 1
+                            ? "text-verdict-stale"
+                            : "text-verdict-accurate"
+                    }
+                  >
+                    {drift === null ? "—" : `${drift >= 0 ? "+" : ""}${fmtHours(drift)}`}
+                  </div>
+                </div>
+                <div className={`col-span-2 text-right font-mono text-[11px] uppercase tracking-widest ${verdictClass}`}>
+                  {verdict}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </div>
+  );
+}
