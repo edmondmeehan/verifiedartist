@@ -49,6 +49,7 @@ function AuthedShell() {
           <NavItem to="/dashboard" icon={LayoutGrid} label="Dashboard" />
           <NavItem to="/audits" icon={History} label="Audit history" />
           <NavItem to="/sla" icon={FileBarChart} label="SLA report" />
+          <NavItem to="/reports" icon={FileText} label="Reports" />
           <NavItem to="/settings" icon={Settings} label="Settings" />
           {(platformQuery.data?.isStaff || platformQuery.data?.needsBootstrap) && (
             <NavItem to="/admin" icon={Shield} label="Admin" />
