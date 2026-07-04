@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/artist-page/$artistId")({
 });
 
 interface Card { title: string; description: string; url: string }
-interface DateRow { date: string; venue: string; city: string; type: string }
+interface DateRow { date: string; venue: string; city: string; type: string; ticketUrl: string }
 interface Channel { name: string; url: string; description: string }
 interface FaqRow { question: string; answer: string }
 
