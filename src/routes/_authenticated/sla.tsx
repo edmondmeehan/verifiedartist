@@ -44,7 +44,7 @@ function SLAReport() {
 
   const updateRange = (patch: { from?: Date; to?: Date }) => {
     navigate({
-      search: (prev) => ({
+      search: (prev: { from?: string; to?: string }) => ({
         ...prev,
         from: patch.from ? startOfDay(patch.from).toISOString() : prev.from,
         to: patch.to ? endOfDay(patch.to).toISOString() : prev.to,
