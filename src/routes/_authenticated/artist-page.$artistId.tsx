@@ -209,6 +209,17 @@ function EditPage() {
 
       {/* Snapshot */}
       <Section label="2. Verified live snapshot">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-sm border border-dashed border-border bg-background/60 p-3">
+          <p className="text-xs text-muted-foreground">Pull the latest headline and note from the canonical artist record (Spotify snapshot + latest release).</p>
+          <button
+            onClick={() => autoSync.mutate()}
+            disabled={autoSync.isPending}
+            className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-1.5 text-xs hover:bg-surface-elevated disabled:opacity-50"
+          >
+            {autoSync.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Auto-sync from canonical
+          </button>
+        </div>
         <LabelledInput label="Snapshot headline" value={snapshotHeadline} onChange={setSnapshotHeadline} placeholder="34 verified dates. Next stop is…" />
         <div className="mt-4">
           <ListEditor
