@@ -37,14 +37,10 @@ export const Route = createFileRoute("/_authenticated/sla")({
 
 function SLAReport() {
   const search = Route.useSearch();
-  const navigate = useNavigate({ from: "/_authenticated/sla" });
-  const from = startOfDay(new Date(search.from));
-  const to = endOfDay(new Date(search.to));
-  const periodLabel = `${format(from, "MMM d, yyyy")} – ${format(to, "MMM d, yyyy")}`;
-
+  const navigate = useNavigate();
   const updateRange = (patch: { from?: Date; to?: Date }) => {
     navigate({
-      search: (prev: { from?: string; to?: string }) => ({
+      search: (prev) => ({
         ...prev,
         from: patch.from ? startOfDay(patch.from).toISOString() : prev.from,
         to: patch.to ? endOfDay(patch.to).toISOString() : prev.to,
