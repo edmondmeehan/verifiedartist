@@ -167,6 +167,8 @@ export const saveArtistPage = createServerFn({ method: "POST" })
       live_snapshot: data.content.live_snapshot,
       official_channels: data.content.official_channels,
       faq: data.content.faq,
+      footer_badge_text: data.content.footer_badge_text,
+      footer_caption: data.content.footer_caption,
     };
     const { data: updated, error } = await supabase
       .from("artist_public_pages")
