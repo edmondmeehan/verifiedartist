@@ -221,9 +221,8 @@ function SLAReport() {
                       {targetStats.map((t) => {
                         const isOpen = expandedTarget === t.target;
                         return (
-                          <>
+                          <Fragment key={t.target}>
                             <tr
-                              key={t.target}
                               onClick={() => setExpandedTarget(isOpen ? null : t.target)}
                               className={`cursor-pointer hover:bg-surface-elevated ${isOpen ? "bg-surface-elevated" : ""}`}
                             >
@@ -247,7 +246,7 @@ function SLAReport() {
                               <td className={`text-xs ${t.slaPct >= 90 ? "text-verdict-accurate" : t.slaPct >= 70 ? "text-verdict-stale" : "text-verdict-wrong"}`}>{t.slaPct}%</td>
                             </tr>
                             {isOpen && (
-                              <tr key={`${t.target}-detail`}>
+                              <tr>
                                 <td colSpan={7} className="bg-background p-0">
                                   <TargetTimeline
                                     target={t.target}
@@ -257,7 +256,7 @@ function SLAReport() {
                                 </td>
                               </tr>
                             )}
-                          </>
+                          </Fragment>
                         );
                       })}
                     </tbody>
