@@ -4,10 +4,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { listArtists, createArtist, searchSpotifyArtists } from "@/lib/artists.functions";
 import { getMyOrg } from "@/lib/org.functions";
 import { AGENT_LABELS, scoreFromRuns, scoreTier, type Verdict } from "@/lib/verdict";
+import { LastSyncedBadge } from "@/components/LastSyncedBadge";
 import { useEffect, useState } from "react";
 import { Plus, TrendingDown, TrendingUp, Minus, Loader2, Search, Check } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -85,7 +87,9 @@ function ArtistCard({ artist }: { artist: Awaited<ReturnType<typeof listArtists>
         <div>
           <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Artist</div>
           <h3 className="mt-1 font-display text-xl">{artist.name}</h3>
+          {artist.spotify_id && <LastSyncedBadge syncedAt={artist.spotify_synced_at} className="mt-2" />}
         </div>
+
         <div className="text-right">
           <div className={`font-display text-4xl leading-none ${tier.color}`}>
             {score === null ? "—" : score}
