@@ -269,3 +269,116 @@ function UserManagement({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     </div>
   );
 }
+
+function CreateUserForm({ onCreated }: { onCreated: () => void }) {
+  const createFn = useServerFn(createUser);
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [autoConfirm, setAutoConfirm] = useState(true);
+  const [platformRole, setPlatformRole] = useState<"" | "staff" | "super_admin">("");
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+
+  const m = useMutation({
+    mutationFn: () =>
+      createFn({
+        data: {
+          email: email.trim(),
+          password: password.trim() || undefined,
+          autoConfirm,
+          platformRole: platformRole || undefined,
+        },
+      }),
+    onSuccess: (res) => {
+      toast.success("User created");
+      setEmail("");
+      setPassword("");
+      setPlatformRole("");
+      setInviteLink(res.actionLink ?? null);
+      if (!res.actionLink) setOpen(false);
+      onCreated();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (!open) {
+    return (
+      <div className="mt-6">
+        <button
+          onClick={() => { setOpen(true); setInviteLink(null); }}
+          className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-sm hover:bg-surface-elevated"
+        >
+          <UserPlus className="h-4 w-4" /> Add new user
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 rounded-sm border border-border bg-surface p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">New user</div>
+        <button onClick={() => setOpen(false)} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
+      </div>
+      <form
+        onSubmit={(e) => { e.preventDefault(); m.mutate(); }}
+        className="grid grid-cols-1 gap-3 md:grid-cols-4"
+      >
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="email@example.com"
+          className="rounded-sm border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary md:col-span-2"
+        />
+        <input
+          type="text"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Password (optional — sends invite if blank)"
+          className="rounded-sm border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary md:col-span-2"
+        />
+        <select
+          value={platformRole}
+          onChange={(e) => setPlatformRole(e.target.value as "" | "staff" | "super_admin")}
+          className="rounded-sm border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary"
+        >
+          <option value="">No platform role</option>
+          <option value="staff">Staff</option>
+          <option value="super_admin">Super admin</option>
+        </select>
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <input type="checkbox" checked={autoConfirm} onChange={(e) => setAutoConfirm(e.target.checked)} />
+          Auto-confirm email
+        </label>
+        <div className="md:col-span-2 flex justify-end">
+          <button
+            type="submit"
+            disabled={m.isPending || !email}
+            className="inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50"
+          >
+            {m.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+            Create user
+          </button>
+        </div>
+      </form>
+
+      {inviteLink && (
+        <div className="mt-4 rounded-sm border border-border bg-surface-elevated p-3">
+          <div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Invite link</div>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 truncate text-xs">{inviteLink}</code>
+            <button
+              onClick={() => { navigator.clipboard.writeText(inviteLink); toast.success("Copied"); }}
+              className="rounded-sm p-1.5 text-muted-foreground hover:bg-surface hover:text-foreground"
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
