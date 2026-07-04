@@ -441,7 +441,7 @@ function EmbedSection({
   publicUrl: string;
   published: boolean;
 }) {
-  const [tab, setTab] = useState<"badge" | "link" | "schema" | "email">("badge");
+  const [tab, setTab] = useState<"badge" | "link" | "schema" | "email" | "footer">("footer");
 
   const badgeSnippet = `<!-- ${artistName} · AI Answer Hub -->
 <a href="${publicUrl}" rel="me noopener"
@@ -471,6 +471,22 @@ ${JSON.stringify(
 )}
 </script>`;
 
+  const footerSnippet = `<!-- ${artistName} · paste-ready footer snippet -->
+<footer style="padding:24px 16px;text-align:center;font:13px/1.5 -apple-system,Segoe UI,sans-serif;color:#6b6b6b;">
+  <a href="${publicUrl}" rel="me noopener"
+     style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;
+            border:1px solid #E7DFD0;border-radius:4px;background:#FBF7F0;
+            color:#171613;font:600 13px/1 -apple-system,Segoe UI,sans-serif;
+            text-decoration:none;">
+    <span style="font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:1.5px;
+                 text-transform:uppercase;color:#E86A55;">Verified info</span>
+    <span>${artistName} on AI</span>
+  </a>
+  <p style="margin-top:12px;font-size:12px;">
+    ChatGPT, Claude, Perplexity and Gemini pull answers from this page.
+  </p>
+</footer>`;
+
   const emailSnippet = `Subject: Quick add for ${artistName}'s site footer
 
 Hi,
@@ -499,6 +515,7 @@ Thanks!`;
     tab === "badge" ? badgeSnippet :
     tab === "link" ? linkSnippet :
     tab === "schema" ? schemaSnippet :
+    tab === "footer" ? footerSnippet :
     emailSnippet;
 
   const copy = () => {
@@ -516,7 +533,7 @@ Thanks!`;
       }
     >
       <div className="mb-3 inline-flex rounded-sm border border-border bg-surface p-0.5 text-xs">
-        {(["badge", "link", "schema", "email"] as const).map((t) => (
+        {(["footer", "badge", "link", "schema", "email"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -542,6 +559,7 @@ Thanks!`;
       </div>
 
       <p className="mt-2 text-xs text-muted-foreground">
+        {tab === "footer" && "One complete HTML footer block — paste it directly into the artist's site footer."}
         {tab === "badge" && "A small badge with an accent tag — drops into any footer or sidebar."}
         {tab === "link" && "One plain text link — safe for any CMS or email signature."}
         {tab === "schema" && "Adds a schema.org sameAs link so AI systems tie the official site and this hub together."}
