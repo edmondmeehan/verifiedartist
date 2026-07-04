@@ -174,6 +174,15 @@ function EditPage() {
               </>
             )}
             <button
+              onClick={() => aiPopulate.mutate()}
+              disabled={aiPopulate.isPending}
+              title="Draft page copy from available artist data"
+              className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-sm hover:bg-surface-elevated disabled:opacity-50"
+            >
+              {aiPopulate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              Generate with AI
+            </button>
+            <button
               onClick={() => togglePublish.mutate(!published)}
               disabled={togglePublish.isPending || (!published && !slug.trim())}
               className={`inline-flex items-center gap-2 rounded-sm px-3 py-2 text-sm font-semibold ${published ? "border border-border bg-surface hover:bg-surface-elevated" : "bg-primary text-primary-foreground hover:brightness-110"} disabled:opacity-50`}
