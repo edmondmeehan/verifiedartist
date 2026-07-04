@@ -83,11 +83,24 @@ function ArtistCard({ artist }: { artist: Awaited<ReturnType<typeof listArtists>
       params={{ artistId: artist.id }}
       className="group block rounded-sm border border-border bg-surface p-5 transition hover:border-primary/50 hover:bg-surface-elevated"
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Artist</div>
-          <h3 className="mt-1 font-display text-xl">{artist.name}</h3>
-          {artist.spotify_id && <LastSyncedBadge syncedAt={artist.spotify_synced_at} className="mt-2" />}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          {artist.image_url ? (
+            <img
+              src={artist.image_url}
+              alt={artist.name}
+              className="h-14 w-14 flex-shrink-0 rounded-sm border border-border object-cover"
+            />
+          ) : (
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-sm border border-border bg-background font-display text-xl text-muted-foreground">
+              {artist.name.slice(0, 1).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Artist</div>
+            <h3 className="mt-1 truncate font-display text-xl">{artist.name}</h3>
+            {artist.spotify_id && <LastSyncedBadge syncedAt={artist.spotify_synced_at} className="mt-2" />}
+          </div>
         </div>
 
         <div className="text-right">
