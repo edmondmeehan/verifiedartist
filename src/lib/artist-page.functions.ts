@@ -205,14 +205,15 @@ export const syncArtistPageFromCanonical = createServerFn({ method: "GET" })
       .select("name, official_site_url, spotify_id, spotify_snapshot, spotify_synced_at")
       .eq("id", artist.id)
       .maybeSingle();
-    const { data: canonical } = await supabase
+    const { data: canonicalRow } = await supabase
       .from("canonical_records")
-      .select("socials, latest_release, genres, followers, headline")
+      .select("data")
       .eq("artist_id", artist.id)
       .eq("is_current", true)
       .maybeSingle();
+    const canonical = (canonicalRow?.data ?? {}) as any;
 
-    const snap = (artistRow?.spotify_snapshot ?? {}) as any;
+    const snap = ((artistRow as any)?.spotify_snapshot ?? {}) as any;
     const latest = (canonical?.latest_release ?? snap?.latest_release ?? null) as any;
     const followers: number | null = canonical?.followers ?? snap?.followers ?? null;
 
