@@ -451,11 +451,22 @@ function CanonicalEditor({ artistId, canonical }: { artistId: string; canonical:
         </Section>
 
         <Section title="Tour dates" action={
-          <button onClick={() => update("tour_dates", [...data.tour_dates, { date: "", venue: "", city: "", country: "", ticket_url: "", status: "on_sale" }])}
-            className="inline-flex items-center gap-1 rounded-sm border border-border px-2.5 py-1 text-xs hover:bg-surface-elevated">
-            <Plus className="h-3 w-3" /> Add date
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fetchTour.mutate()}
+              disabled={fetchTour.isPending}
+              className="inline-flex items-center gap-1 rounded-sm border border-border px-2.5 py-1 text-xs hover:bg-surface-elevated disabled:opacity-50"
+            >
+              {fetchTour.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              Fetch with AI
+            </button>
+            <button onClick={() => update("tour_dates", [...data.tour_dates, { date: "", venue: "", city: "", country: "", ticket_url: "", status: "on_sale" }])}
+              className="inline-flex items-center gap-1 rounded-sm border border-border px-2.5 py-1 text-xs hover:bg-surface-elevated">
+              <Plus className="h-3 w-3" /> Add date
+            </button>
+          </div>
         }>
+
           {data.tour_dates.length === 0 ? (
             <div className="rounded-sm border border-dashed border-border p-6 text-center text-xs text-muted-foreground">No tour dates yet.</div>
           ) : (
