@@ -213,6 +213,14 @@ function EditPage() {
         </div>
       </Section>
 
+      {/* Share with webmaster */}
+      <EmbedSection
+        artistName={(q.data as any).artist?.name ?? "this artist"}
+        publicUrl={publicUrl}
+        published={published}
+      />
+
+
       {/* Headline */}
       <Section label="Headline paragraph" hint="Shown right under the artist name.">
         <textarea value={headline} onChange={(e) => setHeadline(e.target.value)} rows={3} className="w-full resize-y rounded-sm border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary" />
