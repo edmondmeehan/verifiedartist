@@ -7,7 +7,9 @@ import {
   setArtistPagePublished,
   syncArtistPageFromCanonical,
   generateArtistPageWithAI,
+  fetchTourDatesWithAI,
 } from "@/lib/artist-page.functions";
+
 import { Loader2, ExternalLink, Plus, Trash2, Save, Eye, EyeOff, ArrowLeft, Copy, RefreshCw, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
