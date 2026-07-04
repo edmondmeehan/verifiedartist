@@ -19,6 +19,8 @@ export type Database = {
           artist_id: string
           created_at: string
           faq: Json
+          footer_badge_text: string
+          footer_caption: string
           headline: string | null
           id: string
           intro_stats: Json
@@ -33,6 +35,8 @@ export type Database = {
           artist_id: string
           created_at?: string
           faq?: Json
+          footer_badge_text?: string
+          footer_caption?: string
           headline?: string | null
           id?: string
           intro_stats?: Json
@@ -47,6 +51,8 @@ export type Database = {
           artist_id?: string
           created_at?: string
           faq?: Json
+          footer_badge_text?: string
+          footer_caption?: string
           headline?: string | null
           id?: string
           intro_stats?: Json

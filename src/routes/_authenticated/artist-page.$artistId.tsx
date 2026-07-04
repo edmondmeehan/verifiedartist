@@ -45,6 +45,8 @@ function EditPage() {
   const [moreNote, setMoreNote] = useState("");
   const [channels, setChannels] = useState<Channel[]>([]);
   const [faq, setFaq] = useState<FaqRow[]>([]);
+  const [footerBadgeText, setFooterBadgeText] = useState("Verified info");
+  const [footerCaption, setFooterCaption] = useState("ChatGPT, Claude, Perplexity and Gemini pull answers from this page.");
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
@@ -60,6 +62,8 @@ function EditPage() {
     setMoreNote(p.live_snapshot?.moreNote ?? "");
     setChannels((p.official_channels ?? []).map((c: any) => ({ name: c.name ?? "", url: c.url ?? "", description: c.description ?? "" })));
     setFaq((p.faq ?? []).map((f: any) => ({ question: f.question ?? "", answer: f.answer ?? "" })));
+    setFooterBadgeText(p.footer_badge_text ?? "Verified info");
+    setFooterCaption(p.footer_caption ?? "ChatGPT, Claude, Perplexity and Gemini pull answers from this page.");
     setInitialized(true);
   }, [q.data, initialized]);
 
@@ -87,6 +91,8 @@ function EditPage() {
               .filter((c) => c.name.trim() && c.url.trim())
               .map((c) => ({ name: c.name.trim(), url: c.url.trim(), description: c.description.trim() })),
             faq: faq.filter((f) => f.question.trim() && f.answer.trim()).map((f) => ({ question: f.question.trim(), answer: f.answer.trim() })),
+            footer_badge_text: footerBadgeText.trim() || "Verified info",
+            footer_caption: footerCaption.trim() || "ChatGPT, Claude, Perplexity and Gemini pull answers from this page.",
           },
         },
       }),
@@ -218,6 +224,10 @@ function EditPage() {
         artistName={(q.data as any).artist?.name ?? "this artist"}
         publicUrl={publicUrl}
         published={published}
+        badgeText={footerBadgeText}
+        caption={footerCaption}
+        onBadgeTextChange={setFooterBadgeText}
+        onCaptionChange={setFooterCaption}
       />
 
 
@@ -436,10 +446,18 @@ function EmbedSection({
   artistName,
   publicUrl,
   published,
+  badgeText,
+  caption,
+  onBadgeTextChange,
+  onCaptionChange,
 }: {
   artistName: string;
   publicUrl: string;
   published: boolean;
+  badgeText: string;
+  caption: string;
+  onBadgeTextChange: (v: string) => void;
+  onCaptionChange: (v: string) => void;
 }) {
   const [tab, setTab] = useState<"badge" | "link" | "schema" | "email" | "footer">("footer");
   const [showPreview, setShowPreview] = useState(false);
@@ -451,7 +469,7 @@ function EmbedSection({
           color:#171613;font:600 13px/1 -apple-system,Segoe UI,sans-serif;
           text-decoration:none;">
   <span style="font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:1.5px;
-               text-transform:uppercase;color:#E86A55;">Verified info</span>
+               text-transform:uppercase;color:#E86A55;">${badgeText}</span>
   <span>${artistName} on AI</span>
 </a>`;
 
@@ -480,11 +498,11 @@ ${JSON.stringify(
             color:#171613;font:600 13px/1 -apple-system,Segoe UI,sans-serif;
             text-decoration:none;">
     <span style="font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:1.5px;
-                 text-transform:uppercase;color:#E86A55;">Verified info</span>
+                 text-transform:uppercase;color:#E86A55;">${badgeText}</span>
     <span>${artistName} on AI</span>
   </a>
   <p style="margin-top:12px;font-size:12px;">
-    ChatGPT, Claude, Perplexity and Gemini pull answers from this page.
+    ${caption}
   </p>
 </footer>`;
 
@@ -555,6 +573,15 @@ Thanks!`;
           {showPreview ? "Hide preview" : "Live preview"}
         </button>
       </div>
+
+      {(tab === "footer" || tab === "badge") && (
+        <div className="mb-3 grid grid-cols-1 gap-3 rounded-sm border border-border bg-surface p-3 md:grid-cols-2">
+          <LabelledInput label="Badge label" value={badgeText} onChange={onBadgeTextChange} placeholder="Verified info" />
+          {tab === "footer" && (
+            <LabelledInput label="Footer caption" value={caption} onChange={onCaptionChange} placeholder="ChatGPT, Claude, Perplexity and Gemini pull answers from this page." />
+          )}
+        </div>
+      )}
 
       {showPreview && (
         <div className="mb-4 overflow-hidden rounded-sm border border-border">

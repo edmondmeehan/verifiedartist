@@ -53,6 +53,8 @@ const pageContentSchema = z.object({
   live_snapshot: liveSnapshotSchema.default({ dates: [] }),
   official_channels: z.array(channelRowSchema).max(20).default([]),
   faq: z.array(faqRowSchema).max(50).default([]),
+  footer_badge_text: z.string().trim().max(60).optional().default("Verified info"),
+  footer_caption: z.string().trim().max(300).optional().default("ChatGPT, Claude, Perplexity and Gemini pull answers from this page."),
 });
 
 // ---- Helpers ---------------------------------------------------------------
@@ -126,6 +128,8 @@ export const getMyArtistPage = createServerFn({ method: "GET" })
       live_snapshot: { headline: "", dates: [], moreNote: "" },
       official_channels: [],
       faq: [],
+      footer_badge_text: "Verified info",
+      footer_caption: "ChatGPT, Claude, Perplexity and Gemini pull answers from this page.",
     };
     const { data: created, error } = await supabase
       .from("artist_public_pages")
@@ -163,6 +167,8 @@ export const saveArtistPage = createServerFn({ method: "POST" })
       live_snapshot: data.content.live_snapshot,
       official_channels: data.content.official_channels,
       faq: data.content.faq,
+      footer_badge_text: data.content.footer_badge_text,
+      footer_caption: data.content.footer_caption,
     };
     const { data: updated, error } = await supabase
       .from("artist_public_pages")
@@ -361,7 +367,7 @@ export const getPublicArtistPage = createServerFn({ method: "GET" })
     const { data: page, error } = await supabase
       .from("artist_public_pages")
       .select(
-        "slug, headline, intro_stats, start_here, live_snapshot, official_channels, faq, updated_at, artist_id",
+        "slug, headline, intro_stats, start_here, live_snapshot, official_channels, faq, updated_at, artist_id, footer_badge_text, footer_caption",
       )
       .eq("slug", data.slug)
       .eq("published", true)
@@ -387,6 +393,8 @@ export const getPublicArtistPage = createServerFn({ method: "GET" })
       officialChannels: (page.official_channels ?? []) as any[],
       faq: (page.faq ?? []) as any[],
       updatedAt: page.updated_at,
+      footerBadgeText: page.footer_badge_text ?? "Verified info",
+      footerCaption: page.footer_caption ?? "ChatGPT, Claude, Perplexity and Gemini pull answers from this page.",
       artist: {
         name: artist?.name ?? "Artist",
         imageUrl: artist?.image_url ?? null,
