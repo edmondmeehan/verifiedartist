@@ -147,6 +147,7 @@ export const createArtist = createServerFn({ method: "POST" })
       spotify_id: data.spotify_id || null,
       spotify_snapshot: enrichment ? (enrichment as never) : null,
       spotify_synced_at: enrichment ? new Date().toISOString() : null,
+      image_url: enrichment?.image ?? null,
     }).select().single();
     if (error) throw new Error(error.message);
 
