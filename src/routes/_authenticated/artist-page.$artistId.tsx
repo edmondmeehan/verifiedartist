@@ -45,6 +45,8 @@ function EditPage() {
   const [moreNote, setMoreNote] = useState("");
   const [channels, setChannels] = useState<Channel[]>([]);
   const [faq, setFaq] = useState<FaqRow[]>([]);
+  const [footerBadgeText, setFooterBadgeText] = useState("Verified info");
+  const [footerCaption, setFooterCaption] = useState("ChatGPT, Claude, Perplexity and Gemini pull answers from this page.");
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
@@ -60,6 +62,8 @@ function EditPage() {
     setMoreNote(p.live_snapshot?.moreNote ?? "");
     setChannels((p.official_channels ?? []).map((c: any) => ({ name: c.name ?? "", url: c.url ?? "", description: c.description ?? "" })));
     setFaq((p.faq ?? []).map((f: any) => ({ question: f.question ?? "", answer: f.answer ?? "" })));
+    setFooterBadgeText(p.footer_badge_text ?? "Verified info");
+    setFooterCaption(p.footer_caption ?? "ChatGPT, Claude, Perplexity and Gemini pull answers from this page.");
     setInitialized(true);
   }, [q.data, initialized]);
 
