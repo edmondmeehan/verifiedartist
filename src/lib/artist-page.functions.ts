@@ -387,12 +387,42 @@ export const getPublicArtistPage = createServerFn({ method: "GET" })
       .eq("id", page.artist_id)
       .maybeSingle();
 
+    const liveSnapshot = { ...((page.live_snapshot ?? {}) as any) };
+    liveSnapshot.dates = Array.isArray(liveSnapshot.dates) ? liveSnapshot.dates : [];
+
+    // Fallback: if the editor hasn't pushed dates into the page yet, surface
+    // the canonical record's verified tour dates so the public page isn't empty.
+    if (liveSnapshot.dates.length === 0) {
+      const { data: canonicalRow } = await supabaseAdmin
+        .from("canonical_records")
+        .select("data")
+        .eq("artist_id", page.artist_id)
+        .eq("is_current", true)
+        .maybeSingle();
+      const canonicalDates = ((canonicalRow?.data as any)?.tour_dates ?? []) as any[];
+      if (Array.isArray(canonicalDates) && canonicalDates.length > 0) {
+        const today = new Date().toISOString().slice(0, 10);
+        liveSnapshot.dates = canonicalDates
+          .filter((d) => d && typeof d.date === "string")
+          .filter((d) => d.date >= today)
+          .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+          .slice(0, 50)
+          .map((d) => ({
+            date: formatDate(d.date),
+            venue: d.venue ?? "",
+            city: [d.city, d.country].filter(Boolean).join(", "),
+            type: d.status === "on_sale" ? "On sale" : d.status === "announced" ? "Announced" : (d.status ?? ""),
+            ticketUrl: d.ticket_url ?? "",
+          }));
+      }
+    }
+
     return {
       slug: page.slug,
       headline: page.headline ?? "",
       introStats: page.intro_stats ?? {},
       startHere: (page.start_here ?? []) as any[],
-      liveSnapshot: (page.live_snapshot ?? {}) as any,
+      liveSnapshot,
       officialChannels: (page.official_channels ?? []) as any[],
       faq: (page.faq ?? []) as any[],
       updatedAt: page.updated_at,
