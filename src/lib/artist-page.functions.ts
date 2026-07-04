@@ -442,10 +442,13 @@ Return ONLY a JSON object with this exact shape and nothing else — no prose, n
   "headline": string,                  // one factual sentence like "12 confirmed dates through Aug 2026, next stop Fox Theatre, Atlanta."
   "moreNote": string,                  // optional short pointer like "Full tour on artist's Tickets page." — empty string if none
   "dates": Array<{
-    "date": string,                    // human-readable, e.g. "July 10, 2026"
+    "date": string,                    // ISO "YYYY-MM-DD" if you know it, otherwise human-readable "July 10, 2026"
     "venue": string,                   // venue name
-    "city": string,                    // "City, ST" or "City, Country"
-    "type": string                     // short tag: "Theater", "Festival", "Arena", "Club", or "" if unknown
+    "city": string,                    // just the city, e.g. "Atlanta" or "Atlanta, GA"
+    "country": string,                 // ISO-ish country name, e.g. "USA", "UK", "Germany" — "" if unknown
+    "type": string,                    // short tag: "Theater", "Festival", "Arena", "Club", or "" if unknown
+    "ticketUrl": string,               // direct ticket URL if visible, otherwise ""
+    "status": string                   // one of "on_sale", "sold_out", "presale", "announced", "cancelled"
   }>
 }
 
@@ -471,10 +474,12 @@ Rules:
         try { parsed = JSON.parse(match[0]); } catch { parsed = null; }
       }
     }
+    type OutDate = { date: string; venue: string; city: string; country: string; type: string; ticketUrl: string; status: string };
     if (!parsed || typeof parsed !== "object") {
-      return { headline: "", moreNote: "", dates: [] as { date: string; venue: string; city: string; type: string }[] };
+      return { headline: "", moreNote: "", dates: [] as OutDate[] };
     }
 
+    const allowedStatus = new Set(["on_sale", "sold_out", "presale", "announced", "cancelled"]);
     const dates = Array.isArray(parsed.dates) ? parsed.dates : [];
     return {
       headline: String(parsed.headline ?? "").slice(0, 600),
@@ -482,11 +487,18 @@ Rules:
       dates: dates
         .filter((d: any) => d && typeof d.date === "string" && d.date.trim())
         .slice(0, 20)
-        .map((d: any) => ({
-          date: String(d.date ?? "").slice(0, 60),
-          venue: String(d.venue ?? "").slice(0, 200),
-          city: String(d.city ?? "").slice(0, 200),
-          type: String(d.type ?? "").slice(0, 60),
-        })),
+        .map((d: any): OutDate => {
+          const status = String(d.status ?? "").trim().toLowerCase();
+          return {
+            date: String(d.date ?? "").slice(0, 60),
+            venue: String(d.venue ?? "").slice(0, 200),
+            city: String(d.city ?? "").slice(0, 200),
+            country: String(d.country ?? "").slice(0, 100),
+            type: String(d.type ?? "").slice(0, 60),
+            ticketUrl: String(d.ticketUrl ?? "").slice(0, 500),
+            status: allowedStatus.has(status) ? status : "announced",
+          };
+        }),
     };
   });
+
