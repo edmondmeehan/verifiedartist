@@ -5,15 +5,25 @@ import { z } from "zod";
 // Typical propagation delay per target, in hours. These simulate real-world
 // index/refresh times for each retrieval surface. Fan-out confirmations
 // resolve automatically once this much wall-clock time has passed since push.
+// Realistic propagation windows, calibrated against the 24h "green" and 48h
+// "SLA met" thresholds shown in the SLA report. Values reflect observed median
+// time-to-live for each surface, not best-case API acknowledgement.
 export const TARGET_DELAY_HOURS: Record<string, number> = {
-  artist_site: 0.05,     // ~3 min: our site rebuild
-  indexnow: 0.25,        // ~15 min: Bing/Yandex accept immediately
-  x: 0.05,               // ~3 min: X post
-  spotify: 4,            // Spotify canonical refresh
-  bandsintown: 6,        // Bandsintown ingest
-  songkick: 10,          // Songkick moderation
-  google_sitemap: 14,    // Google recrawl
-  wikidata: 30,          // Manual edit + review
+  // Surfaces we control or that accept push instantly — well inside 24h.
+  artist_site: 0.1,       // ~6 min: static rebuild + CDN purge
+  x: 0.1,                 // ~6 min: post live, embed cache warm
+  indexnow: 1,            // ~1h: Bing/Yandex accept instantly, index within the hour
+
+  // Partner ingest pipelines — typically same-day, comfortably under 24h.
+  spotify: 6,             // Spotify for Artists canonical refresh cycle
+  bandsintown: 8,         // Bandsintown event ingest + dedupe pass
+
+  // Moderated / crawl-driven surfaces — land in the 24–48h SLA window.
+  songkick: 18,           // Songkick moderation queue (weekdays)
+  google_sitemap: 30,     // Googlebot recrawl of updated sitemap URLs
+
+  // Human-in-the-loop surface — routinely misses 48h without a nudge.
+  wikidata: 44,           // Volunteer edit + peer review; tight against SLA
 };
 
 const TARGET_ENUM = [
