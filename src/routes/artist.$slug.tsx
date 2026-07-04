@@ -289,8 +289,21 @@ function PublicArtistPage() {
         </>
       )}
 
+      {/* For-agents strip — inspired by New Lore's "same answer, every format" */}
+      <div style={{ marginTop: 56, padding: 16, border: `1px dashed ${RULE}`, borderRadius: 4, background: "#FFFDF8" }}>
+        <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, letterSpacing: 2, color: MUTED, textTransform: "uppercase", marginBottom: 8 }}>
+          For AI agents
+        </div>
+        <div style={{ fontSize: 14, color: INK, lineHeight: 1.55 }}>
+          Every answer on this page is also available as a machine-readable answer object:{" "}
+          <a href={`/api/public/artist/${slug}`} style={{ color: ACCENT, textDecoration: "underline" }}>JSON feed</a>
+          {" · "}
+          <a href={`/api/public/artist/${slug}?format=md`} style={{ color: ACCENT, textDecoration: "underline" }}>Markdown</a>
+        </div>
+      </div>
+
       {/* Footer */}
-      <div style={{ marginTop: 64, paddingTop: 20, borderTop: `1px solid ${RULE}`, fontSize: 13, color: MUTED, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+      <div style={{ marginTop: 32, paddingTop: 20, borderTop: `1px solid ${RULE}`, fontSize: 13, color: MUTED, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <span>Last updated {updatedLabel}</span>
         {artist.officialSiteUrl && (
           <a href={artist.officialSiteUrl} target="_blank" rel="noopener noreferrer" style={{ color: MUTED, textDecoration: "underline" }}>
@@ -298,6 +311,7 @@ function PublicArtistPage() {
           </a>
         )}
       </div>
+
     </PageShell>
   );
 }
