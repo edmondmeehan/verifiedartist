@@ -14,7 +14,7 @@ export const Route = createFileRoute("/artist/$slug")({
     if (!data) throw notFound();
     return { page: data };
   },
-  head: ({ loaderData }) => {
+  head: ({ loaderData, params }) => {
     if (!loaderData) {
       return {
         meta: [
@@ -26,6 +26,7 @@ export const Route = createFileRoute("/artist/$slug")({
     const p = loaderData.page;
     const title = `${p.artist.name} — Artist Hub`;
     const description = (p.headline || `Verified information for ${p.artist.name}.`).slice(0, 160);
+    const feed = `/api/public/artist/${params.slug}`;
     return {
       meta: [
         { title },
@@ -35,9 +36,18 @@ export const Route = createFileRoute("/artist/$slug")({
         { property: "og:type", content: "profile" },
         ...(p.artist.imageUrl ? [{ property: "og:image", content: p.artist.imageUrl }] : []),
         { name: "twitter:card", content: p.artist.imageUrl ? "summary_large_image" : "summary" },
+        // AI-crawler hints: this page welcomes every major agent.
+        { name: "robots", content: "all" },
+        { name: "googlebot", content: "all" },
+      ],
+      links: [
+        // Answer-object feed — machine-readable for AI systems / MCP tools.
+        { rel: "alternate", type: "application/json", href: feed, title: "Answer objects (JSON)" },
+        { rel: "alternate", type: "text/markdown", href: `${feed}?format=md`, title: "Answer objects (Markdown)" },
       ],
     };
   },
+
   component: PublicArtistPage,
   notFoundComponent: ArtistNotFound,
   errorComponent: () => (
@@ -117,6 +127,18 @@ function PublicArtistPage() {
         ? { sameAs: officialChannels.map((c: any) => c.url).filter(Boolean) }
         : {}),
     },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: `${artist.name} — Artist Hub`,
+      dateModified: updatedAt,
+      inLanguage: "en",
+      about: { "@type": "MusicGroup", name: artist.name },
+      speakable: {
+        "@type": "SpeakableSpecification",
+        cssSelector: ["h1", "h2", "p"],
+      },
+    },
   ];
   if (faq.length > 0) {
     jsonLd.push({
@@ -129,6 +151,7 @@ function PublicArtistPage() {
       })),
     });
   }
+
 
   return (
     <PageShell>
@@ -266,8 +289,21 @@ function PublicArtistPage() {
         </>
       )}
 
+      {/* For-agents strip — inspired by New Lore's "same answer, every format" */}
+      <div style={{ marginTop: 56, padding: 16, border: `1px dashed ${RULE}`, borderRadius: 4, background: "#FFFDF8" }}>
+        <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, letterSpacing: 2, color: MUTED, textTransform: "uppercase", marginBottom: 8 }}>
+          For AI agents
+        </div>
+        <div style={{ fontSize: 14, color: INK, lineHeight: 1.55 }}>
+          Every answer on this page is also available as a machine-readable answer object:{" "}
+          <a href={`/api/public/artist/${slug}`} style={{ color: ACCENT, textDecoration: "underline" }}>JSON feed</a>
+          {" · "}
+          <a href={`/api/public/artist/${slug}?format=md`} style={{ color: ACCENT, textDecoration: "underline" }}>Markdown</a>
+        </div>
+      </div>
+
       {/* Footer */}
-      <div style={{ marginTop: 64, paddingTop: 20, borderTop: `1px solid ${RULE}`, fontSize: 13, color: MUTED, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+      <div style={{ marginTop: 32, paddingTop: 20, borderTop: `1px solid ${RULE}`, fontSize: 13, color: MUTED, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <span>Last updated {updatedLabel}</span>
         {artist.officialSiteUrl && (
           <a href={artist.officialSiteUrl} target="_blank" rel="noopener noreferrer" style={{ color: MUTED, textDecoration: "underline" }}>
@@ -275,6 +311,7 @@ function PublicArtistPage() {
           </a>
         )}
       </div>
+
     </PageShell>
   );
 }
