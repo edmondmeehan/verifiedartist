@@ -26,7 +26,7 @@ export async function anthropicCall(prompt: string, opts: CallOptions = {}): Pro
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
 
   const body: Record<string, unknown> = {
-    model: opts.model ?? "claude-sonnet-4-20250514",
+    model: opts.model ?? "claude-sonnet-4-5-20250929",
     max_tokens: opts.maxTokens ?? 1024,
     messages: [{ role: "user", content: prompt }],
   };
