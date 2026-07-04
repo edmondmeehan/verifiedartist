@@ -213,6 +213,14 @@ function EditPage() {
         </div>
       </Section>
 
+      {/* Share with webmaster */}
+      <EmbedSection
+        artistName={(q.data as any).artist?.name ?? "this artist"}
+        publicUrl={publicUrl}
+        published={published}
+      />
+
+
       {/* Headline */}
       <Section label="Headline paragraph" hint="Shown right under the artist name.">
         <textarea value={headline} onChange={(e) => setHeadline(e.target.value)} rows={3} className="w-full resize-y rounded-sm border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary" />
@@ -419,5 +427,126 @@ function ListEditor<T>({
         <Plus className="h-3.5 w-3.5" /> {addLabel}
       </button>
     </div>
+  );
+}
+
+// ---- Share-with-webmaster embed section ------------------------------------
+
+function EmbedSection({
+  artistName,
+  publicUrl,
+  published,
+}: {
+  artistName: string;
+  publicUrl: string;
+  published: boolean;
+}) {
+  const [tab, setTab] = useState<"badge" | "link" | "schema" | "email">("badge");
+
+  const badgeSnippet = `<!-- ${artistName} · AI Answer Hub -->
+<a href="${publicUrl}" rel="me noopener"
+   style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;
+          border:1px solid #E7DFD0;border-radius:4px;background:#FBF7F0;
+          color:#171613;font:600 13px/1 -apple-system,Segoe UI,sans-serif;
+          text-decoration:none;">
+  <span style="font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:1.5px;
+               text-transform:uppercase;color:#E86A55;">Verified info</span>
+  <span>${artistName} on AI</span>
+</a>`;
+
+  const linkSnippet = `<a href="${publicUrl}" rel="me noopener">Verified info about ${artistName} for AI assistants</a>`;
+
+  const schemaSnippet = `<!-- Place inside <head> of ${artistName}'s official site -->
+<link rel="me" href="${publicUrl}" />
+<script type="application/ld+json">
+${JSON.stringify(
+  {
+    "@context": "https://schema.org",
+    "@type": "MusicGroup",
+    name: artistName,
+    sameAs: [publicUrl],
+  },
+  null,
+  2,
+)}
+</script>`;
+
+  const emailSnippet = `Subject: Quick add for ${artistName}'s site footer
+
+Hi,
+
+We built a canonical, always-updated info page for ${artistName} that ChatGPT,
+Claude, Perplexity and Gemini can read to answer fan questions accurately:
+
+${publicUrl}
+
+Could you add a small link to it in the site footer? A one-line version works:
+
+  ${linkSnippet}
+
+If you'd like a small styled badge instead, paste this anywhere in the page:
+
+${badgeSnippet}
+
+Bonus (optional but great for AI search): drop these lines inside the site's <head>
+so search engines link the official site and this hub together:
+
+${schemaSnippet}
+
+Thanks!`;
+
+  const current =
+    tab === "badge" ? badgeSnippet :
+    tab === "link" ? linkSnippet :
+    tab === "schema" ? schemaSnippet :
+    emailSnippet;
+
+  const copy = () => {
+    navigator.clipboard.writeText(current);
+    toast.success("Copied to clipboard");
+  };
+
+  return (
+    <Section
+      label="Share with webmaster"
+      hint={
+        published
+          ? "Send this to the artist's manager or webmaster to add on their official site."
+          : "Publish the page first — these snippets link to the public URL."
+      }
+    >
+      <div className="mb-3 inline-flex rounded-sm border border-border bg-surface p-0.5 text-xs">
+        {(["badge", "link", "schema", "email"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`rounded-sm px-3 py-1.5 font-medium capitalize ${
+              tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t === "schema" ? "Head tags" : t === "email" ? "Email to send" : t}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative">
+        <pre className="max-h-72 overflow-auto rounded-sm border border-border bg-background p-3 pr-24 font-mono text-xs leading-relaxed text-foreground whitespace-pre-wrap break-words">
+{current}
+        </pre>
+        <button
+          onClick={copy}
+          className="absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-sm border border-border bg-surface px-2.5 py-1.5 text-xs font-semibold hover:bg-surface-elevated"
+        >
+          <Copy className="h-3.5 w-3.5" /> Copy
+        </button>
+      </div>
+
+      <p className="mt-2 text-xs text-muted-foreground">
+        {tab === "badge" && "A small badge with an accent tag — drops into any footer or sidebar."}
+        {tab === "link" && "One plain text link — safe for any CMS or email signature."}
+        {tab === "schema" && "Adds a schema.org sameAs link so AI systems tie the official site and this hub together."}
+        {tab === "email" && "Ready-to-send message for the manager or webmaster."}
+      </p>
+    </Section>
   );
 }
