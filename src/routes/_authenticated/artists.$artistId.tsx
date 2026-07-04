@@ -396,6 +396,7 @@ function CanonicalEditor({ artistId, canonical }: { artistId: string; canonical:
   const qc = useQueryClient();
   const saveFn = useServerFn(saveCanonicalRecord);
   const fanFn = useServerFn(fanOutCanonical);
+  const tourFn = useServerFn(fetchTourDatesWithAI);
   const m = useMutation({
     mutationFn: async () => {
       await saveFn({ data: { artistId, data: data as unknown as Record<string, unknown> } });
@@ -408,7 +409,30 @@ function CanonicalEditor({ artistId, canonical }: { artistId: string; canonical:
     },
     onError: (e: Error) => toast.error(e.message),
   });
+  const fetchTour = useMutation({
+    mutationFn: () => tourFn({ data: { artistId } }),
+    onSuccess: (res) => {
+      if (!res.dates?.length) { toast.info("No verified tour dates found right now."); return; }
+      const key = (d: { date: string; venue: string }) => `${d.date.trim().toLowerCase()}|${d.venue.trim().toLowerCase()}`;
+      const existing = new Set(data.tour_dates.map((d) => key(d)));
+      const additions = res.dates
+        .filter((d) => !existing.has(key(d)))
+        .map((d) => ({
+          date: d.date,
+          venue: d.venue,
+          city: d.city,
+          country: d.country,
+          ticket_url: d.ticketUrl,
+          status: d.status,
+        }));
+      if (!additions.length) { toast.info("All fetched dates already in the record."); return; }
+      update("tour_dates", [...data.tour_dates, ...additions]);
+      toast.success(`Added ${additions.length} tour date${additions.length === 1 ? "" : "s"}. Review and Save.`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   function update<K extends keyof CanonicalData>(k: K, v: CanonicalData[K]) { setData((d) => ({ ...d, [k]: v })); setDirty(true); }
+
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
