@@ -17,7 +17,9 @@ const dateRowSchema = z.object({
   venue: z.string().trim().max(200).optional().default(""),
   city: z.string().trim().max(200).optional().default(""),
   type: z.string().trim().max(60).optional().default(""),
+  ticketUrl: z.string().trim().max(500).optional().default("").refine((v) => !v || /^https?:\/\//i.test(v), "Must be an http(s) URL"),
 });
+
 
 const channelRowSchema = z.object({
   name: z.string().trim().min(1).max(120),
