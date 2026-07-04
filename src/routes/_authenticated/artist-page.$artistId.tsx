@@ -118,6 +118,31 @@ function EditPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const aiPopulate = useMutation({
+    mutationFn: () => aiFn({ data: { artistId } }),
+    onSuccess: (res) => {
+      if (res.headline) setHeadline(res.headline);
+      if (res.snapshotHeadline) setSnapshotHeadline(res.snapshotHeadline);
+      if (res.moreNote) setMoreNote(res.moreNote);
+      if (res.startHere?.length) {
+        setStartHere((prev) => {
+          const seen = new Set(prev.map((c) => c.title.trim().toLowerCase()));
+          const additions = res.startHere.filter((c) => !seen.has(c.title.trim().toLowerCase()));
+          return [...prev, ...additions];
+        });
+      }
+      if (res.faq?.length) {
+        setFaq((prev) => {
+          const seen = new Set(prev.map((f) => f.question.trim().toLowerCase()));
+          const additions = res.faq.filter((f) => !seen.has(f.question.trim().toLowerCase()));
+          return [...prev, ...additions];
+        });
+      }
+      toast.success("AI draft populated. Review and Save.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (q.isLoading || !q.data) {
     return <div className="p-8 text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>;
   }
