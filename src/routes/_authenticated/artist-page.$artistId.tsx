@@ -442,6 +442,7 @@ function EmbedSection({
   published: boolean;
 }) {
   const [tab, setTab] = useState<"badge" | "link" | "schema" | "email" | "footer">("footer");
+  const [showPreview, setShowPreview] = useState(false);
 
   const badgeSnippet = `<!-- ${artistName} · AI Answer Hub -->
 <a href="${publicUrl}" rel="me noopener"
