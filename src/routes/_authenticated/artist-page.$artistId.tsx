@@ -153,6 +153,30 @@ function EditPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const fetchTour = useMutation({
+    mutationFn: () => tourFn({ data: { artistId } }),
+    onSuccess: (res) => {
+      if (res.headline) setSnapshotHeadline(res.headline);
+      if (res.moreNote) setMoreNote(res.moreNote);
+      if (res.dates?.length) {
+        setDates((prev) => {
+          const key = (d: DateRow) => `${d.date.trim().toLowerCase()}|${d.venue.trim().toLowerCase()}`;
+          const seen = new Set(prev.map(key));
+          const additions = res.dates
+            .map((d) => ({ date: d.date, venue: d.venue, city: d.city, type: d.type }))
+            .filter((d) => !seen.has(key(d)));
+          return [...prev, ...additions];
+        });
+        toast.success(`Found ${res.dates.length} tour date${res.dates.length === 1 ? "" : "s"}. Review and Save.`);
+      } else {
+        toast.info("No verified tour dates found right now.");
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
+
   if (q.isLoading || !q.data) {
     return <div className="p-8 text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>;
   }
