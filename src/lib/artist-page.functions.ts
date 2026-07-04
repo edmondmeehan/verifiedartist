@@ -280,24 +280,34 @@ export const generateArtistPageWithAI = createServerFn({ method: "POST" })
     };
 
     const system =
-      "You draft copy for an artist's official 'source of truth' page shown to fans. " +
-      "Use ONLY the facts provided. If a fact isn't in the input, leave that field empty rather than inventing. " +
-      "Tone: calm, factual, warm. No hype, no emojis, no hashtags.";
+      "You are an AI-answer strategist building an artist's canonical answer page. " +
+      "Think in 'burning questions' — the questions real fans, journalists, and AI assistants (ChatGPT, Claude, Perplexity, Gemini) ask about this artist before recommending them. " +
+      "For each question, produce an 'answer object': the single best, factual, up-to-date answer, drawn ONLY from the facts provided. " +
+      "If a fact isn't in the input, omit it — never fabricate tour dates, chart positions, awards, quotes, or unverified claims. " +
+      "Tone: calm, factual, warm, quotable. Short sentences. No hype, emojis, hashtags, or marketing language.";
 
-    const prompt = `Draft page copy for the artist below. Return JSON exactly matching this TypeScript type:
+    const prompt = `Draft an AI-friendly canonical page for the artist below.
+
+Method:
+1. Silently brainstorm ~10 burning questions people ask about this artist (identity, current activity, latest release, where to listen, tour, official channels, collaborators, background, "is X still active", "where can I find real info about X").
+2. Keep only the questions you can answer confidently from the provided facts. Discard the rest — do NOT guess.
+3. Turn the surviving questions into concise answer objects.
+
+Return JSON exactly matching this TypeScript type:
 
 {
-  "headline": string,                     // 1-2 sentences under the artist name
-  "startHere": Array<{ "title": string, "description": string, "url": string }>,  // 3-5 Q&A style cards ("What is current with X", "Is X on tour", etc.)
-  "snapshotHeadline": string,             // one sentence summarizing latest release + follower/verified activity
-  "moreNote": string,                     // short pointer sentence for below the dates table
-  "faq": Array<{ "question": string, "answer": string }>   // 3-6 concise Q&As fans commonly ask
+  "headline": string,                      // 1-2 sentences positioning who the artist is right now, grounded in provided facts
+  "startHere": Array<{ "title": string, "description": string, "url": string }>, // 3-5 top burning questions as Q&A cards; url is a cited official source if available, else ""
+  "snapshotHeadline": string,              // one sentence summarizing latest release + verified activity
+  "moreNote": string,                      // short pointer sentence for below the dates table
+  "faq": Array<{ "question": string, "answer": string }>  // 4-7 additional burning questions with direct, citable answers
 }
 
 Rules:
-- Never invent tour dates, venues, or unverified claims.
+- Every answer must be traceable to a fact in the input. If uncertain, drop the question.
+- Prefer titles phrased as real questions ("Is <artist> on tour right now?", "What is <artist>'s latest release?").
 - Use the official site URL for card links when relevant; otherwise leave "url" as "".
-- Keep every field under the limits: headline <= 400 chars, description <= 400, answer <= 800.
+- Field limits: headline <= 400 chars, description <= 400, answer <= 800.
 
 Artist facts (JSON):
 ${JSON.stringify(facts, null, 2)}`;
