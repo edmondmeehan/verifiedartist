@@ -9,8 +9,9 @@ import {
   removePlatformRole,
   deleteUser,
   sendPasswordReset,
+  createUser,
 } from "@/lib/admin.functions";
-import { Loader2, ShieldCheck, ShieldOff, Trash2, KeyRound, Shield } from "lucide-react";
+import { Loader2, ShieldCheck, ShieldOff, Trash2, KeyRound, Shield, UserPlus, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
