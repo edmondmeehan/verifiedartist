@@ -97,7 +97,22 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   );
 }
 
-function RefreshSpotifyButton({ artistId, hasSpotify }: { artistId: string; hasSpotify: boolean }) {
+export type SpotifySnapshot = {
+  spotify_id?: string;
+  name?: string;
+  genres?: string[];
+  followers?: number;
+  popularity?: number;
+  image?: string | null;
+  spotify_url?: string;
+  latest_release?: { title: string; date: string; url: string; image: string | null } | null;
+};
+
+function RefreshSpotifyButton({
+  artistId, hasSpotify, syncedAt, snapshot,
+}: {
+  artistId: string; hasSpotify: boolean; syncedAt: string | null; snapshot: SpotifySnapshot | null;
+}) {
   const qc = useQueryClient();
   const refreshFn = useServerFn(refreshArtistFromSpotify);
   const mutation = useMutation({
@@ -111,15 +126,27 @@ function RefreshSpotifyButton({ artistId, hasSpotify }: { artistId: string; hasS
   });
   if (!hasSpotify) return null;
   return (
-    <button
-      onClick={() => mutation.mutate()}
-      disabled={mutation.isPending}
-      title="Re-sync genres, followers, and latest release from Spotify"
-      className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:bg-surface-elevated hover:text-foreground disabled:opacity-50"
-    >
-      {mutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-      Refresh from Spotify
-    </button>
+    <div className="flex flex-col items-end gap-1.5">
+      <button
+        onClick={() => mutation.mutate()}
+        disabled={mutation.isPending}
+        title="Re-sync genres, followers, and latest release from Spotify"
+        className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:bg-surface-elevated hover:text-foreground disabled:opacity-50"
+      >
+        {mutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+        Refresh from Spotify
+      </button>
+      <div className="text-right font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        {syncedAt ? (
+          <>
+            Synced {formatDistanceToNow(new Date(syncedAt), { addSuffix: true })}
+            {snapshot?.followers != null && <> · {snapshot.followers.toLocaleString()} followers</>}
+          </>
+        ) : (
+          <>Never synced</>
+        )}
+      </div>
+    </div>
   );
 }
 
