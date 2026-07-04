@@ -17,6 +17,7 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAuditsRouteImport } from './routes/_authenticated/audits'
 import { Route as AuthenticatedArtistsArtistIdRouteImport } from './routes/_authenticated/artists.$artistId'
+import { Route as ApiPublicHooksConfirmPropagationRouteImport } from './routes/api/public/hooks/confirm-propagation'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -58,6 +59,12 @@ const AuthenticatedArtistsArtistIdRoute =
     path: '/artists/$artistId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicHooksConfirmPropagationRoute =
+  ApiPublicHooksConfirmPropagationRouteImport.update({
+    id: '/api/public/hooks/confirm-propagation',
+    path: '/api/public/hooks/confirm-propagation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/sla': typeof AuthenticatedSlaRoute
   '/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
+  '/api/public/hooks/confirm-propagation': typeof ApiPublicHooksConfirmPropagationRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -76,6 +84,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/sla': typeof AuthenticatedSlaRoute
   '/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
+  '/api/public/hooks/confirm-propagation': typeof ApiPublicHooksConfirmPropagationRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -87,6 +96,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/sla': typeof AuthenticatedSlaRoute
   '/_authenticated/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
+  '/api/public/hooks/confirm-propagation': typeof ApiPublicHooksConfirmPropagationRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sla'
     | '/artists/$artistId'
+    | '/api/public/hooks/confirm-propagation'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sla'
     | '/artists/$artistId'
+    | '/api/public/hooks/confirm-propagation'
   id:
     | '__root__'
     | '/'
@@ -117,12 +129,14 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/sla'
     | '/_authenticated/artists/$artistId'
+    | '/api/public/hooks/confirm-propagation'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicHooksConfirmPropagationRoute: typeof ApiPublicHooksConfirmPropagationRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -183,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedArtistsArtistIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/hooks/confirm-propagation': {
+      id: '/api/public/hooks/confirm-propagation'
+      path: '/api/public/hooks/confirm-propagation'
+      fullPath: '/api/public/hooks/confirm-propagation'
+      preLoaderRoute: typeof ApiPublicHooksConfirmPropagationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -209,6 +230,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicHooksConfirmPropagationRoute: ApiPublicHooksConfirmPropagationRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
