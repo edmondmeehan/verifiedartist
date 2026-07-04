@@ -446,10 +446,18 @@ function EmbedSection({
   artistName,
   publicUrl,
   published,
+  badgeText,
+  caption,
+  onBadgeTextChange,
+  onCaptionChange,
 }: {
   artistName: string;
   publicUrl: string;
   published: boolean;
+  badgeText: string;
+  caption: string;
+  onBadgeTextChange: (v: string) => void;
+  onCaptionChange: (v: string) => void;
 }) {
   const [tab, setTab] = useState<"badge" | "link" | "schema" | "email" | "footer">("footer");
   const [showPreview, setShowPreview] = useState(false);
@@ -461,7 +469,7 @@ function EmbedSection({
           color:#171613;font:600 13px/1 -apple-system,Segoe UI,sans-serif;
           text-decoration:none;">
   <span style="font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:1.5px;
-               text-transform:uppercase;color:#E86A55;">Verified info</span>
+               text-transform:uppercase;color:#E86A55;">${badgeText}</span>
   <span>${artistName} on AI</span>
 </a>`;
 
@@ -490,11 +498,11 @@ ${JSON.stringify(
             color:#171613;font:600 13px/1 -apple-system,Segoe UI,sans-serif;
             text-decoration:none;">
     <span style="font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:1.5px;
-                 text-transform:uppercase;color:#E86A55;">Verified info</span>
+                 text-transform:uppercase;color:#E86A55;">${badgeText}</span>
     <span>${artistName} on AI</span>
   </a>
   <p style="margin-top:12px;font-size:12px;">
-    ChatGPT, Claude, Perplexity and Gemini pull answers from this page.
+    ${caption}
   </p>
 </footer>`;
 
@@ -565,6 +573,15 @@ Thanks!`;
           {showPreview ? "Hide preview" : "Live preview"}
         </button>
       </div>
+
+      {(tab === "footer" || tab === "badge") && (
+        <div className="mb-3 grid grid-cols-1 gap-3 rounded-sm border border-border bg-surface p-3 md:grid-cols-2">
+          <LabelledInput label="Badge label" value={badgeText} onChange={onBadgeTextChange} placeholder="Verified info" />
+          {tab === "footer" && (
+            <LabelledInput label="Footer caption" value={caption} onChange={onCaptionChange} placeholder="ChatGPT, Claude, Perplexity and Gemini pull answers from this page." />
+          )}
+        </div>
+      )}
 
       {showPreview && (
         <div className="mb-4 overflow-hidden rounded-sm border border-border">
