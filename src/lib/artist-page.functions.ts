@@ -216,8 +216,10 @@ export const getPublicArtistPage = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     if (!page) return null;
 
-    // Fetch artist name + image (public columns)
-    const { data: artist } = await supabase
+    // Artist name/image lives on a table without anon read access; use admin
+    // for this single narrow projection after confirming the page is published.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: artist } = await supabaseAdmin
       .from("artists")
       .select("name, image_url, official_site_url")
       .eq("id", page.artist_id)
