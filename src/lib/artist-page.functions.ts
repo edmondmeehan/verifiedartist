@@ -191,6 +191,65 @@ export const setArtistPagePublished = createServerFn({ method: "POST" })
     return { page: updated };
   });
 
+// Auto-sync snapshot + official channels from the canonical artist record.
+// Returns derived values; client merges into local state and can then Save.
+export const syncArtistPageFromCanonical = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ artistId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const artist = await assertArtistMember(supabase, userId, data.artistId);
+
+    const { data: artistRow } = await supabase
+      .from("artists")
+      .select("name, official_site_url, spotify_id, spotify_snapshot, spotify_synced_at")
+      .eq("id", artist.id)
+      .maybeSingle();
+    const { data: canonicalRow } = await supabase
+      .from("canonical_records")
+      .select("data")
+      .eq("artist_id", artist.id)
+      .eq("is_current", true)
+      .maybeSingle();
+    const canonical = (canonicalRow?.data ?? {}) as any;
+
+    const snap = ((artistRow as any)?.spotify_snapshot ?? {}) as any;
+    const latest = (canonical?.latest_release ?? snap?.latest_release ?? null) as any;
+    const followers: number | null = canonical?.followers ?? snap?.followers ?? null;
+
+    const bits: string[] = [];
+    if (latest?.title && latest?.date) bits.push(`Latest release: “${latest.title}” (${latest.date}).`);
+    if (typeof followers === "number") bits.push(`${followers.toLocaleString()} Spotify followers.`);
+    const snapshotHeadline = bits.join(" ");
+
+    const socials = (canonical?.socials ?? {}) as Record<string, string>;
+    const channels: { name: string; url: string; description: string }[] = [];
+    if (artistRow?.official_site_url) {
+      channels.push({ name: "Official site", url: artistRow.official_site_url, description: "Official artist website." });
+    }
+    if (socials.spotify) {
+      channels.push({ name: "Spotify", url: socials.spotify, description: "Verified Spotify profile." });
+    }
+    for (const [key, url] of Object.entries(socials)) {
+      if (!url || key === "spotify") continue;
+      const label = key.charAt(0).toUpperCase() + key.slice(1);
+      channels.push({ name: label, url, description: `Official ${label}.` });
+    }
+    if (latest?.links?.spotify) {
+      channels.push({ name: "Latest release", url: latest.links.spotify, description: `“${latest.title}” on Spotify.` });
+    }
+
+    const syncedAt = artistRow?.spotify_synced_at ?? new Date().toISOString();
+
+    return {
+      liveSnapshot: {
+        headline: snapshotHeadline,
+        moreNote: latest?.title ? `Most recent release verified on ${new Date(syncedAt).toLocaleDateString()}.` : "",
+      },
+      officialChannels: channels,
+    };
+  });
+
 // ---- Public read (no auth) -------------------------------------------------
 
 export const getPublicArtistPage = createServerFn({ method: "GET" })

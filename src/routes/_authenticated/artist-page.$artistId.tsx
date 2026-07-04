@@ -5,8 +5,9 @@ import {
   getMyArtistPage,
   saveArtistPage,
   setArtistPagePublished,
+  syncArtistPageFromCanonical,
 } from "@/lib/artist-page.functions";
-import { Loader2, ExternalLink, Plus, Trash2, Save, Eye, EyeOff, ArrowLeft, Copy } from "lucide-react";
+import { Loader2, ExternalLink, Plus, Trash2, Save, Eye, EyeOff, ArrowLeft, Copy, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -24,6 +25,7 @@ function EditPage() {
   const fn = useServerFn(getMyArtistPage);
   const saveFn = useServerFn(saveArtistPage);
   const pubFn = useServerFn(setArtistPagePublished);
+  const syncFn = useServerFn(syncArtistPageFromCanonical);
   const qc = useQueryClient();
 
   const q = useQuery({
@@ -93,6 +95,24 @@ function EditPage() {
   const togglePublish = useMutation({
     mutationFn: (published: boolean) => pubFn({ data: { artistId, published } }),
     onSuccess: () => { toast.success("Updated"); qc.invalidateQueries({ queryKey: ["artist-page", artistId] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const autoSync = useMutation({
+    mutationFn: () => syncFn({ data: { artistId } }),
+    onSuccess: (res) => {
+      setSnapshotHeadline(res.liveSnapshot.headline ?? "");
+      if (res.liveSnapshot.moreNote) setMoreNote(res.liveSnapshot.moreNote);
+      // Merge channels: replace any existing entry with same URL, then append new ones.
+      setChannels((prev) => {
+        const byUrl = new Map(prev.map((c) => [c.url.trim().toLowerCase(), c]));
+        for (const c of res.officialChannels) {
+          byUrl.set(c.url.trim().toLowerCase(), { name: c.name, url: c.url, description: c.description });
+        }
+        return Array.from(byUrl.values());
+      });
+      toast.success("Synced from canonical record. Review and Save.");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -189,6 +209,17 @@ function EditPage() {
 
       {/* Snapshot */}
       <Section label="2. Verified live snapshot">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-sm border border-dashed border-border bg-background/60 p-3">
+          <p className="text-xs text-muted-foreground">Pull the latest headline and note from the canonical artist record (Spotify snapshot + latest release).</p>
+          <button
+            onClick={() => autoSync.mutate()}
+            disabled={autoSync.isPending}
+            className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-1.5 text-xs hover:bg-surface-elevated disabled:opacity-50"
+          >
+            {autoSync.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Auto-sync from canonical
+          </button>
+        </div>
         <LabelledInput label="Snapshot headline" value={snapshotHeadline} onChange={setSnapshotHeadline} placeholder="34 verified dates. Next stop is…" />
         <div className="mt-4">
           <ListEditor
@@ -213,6 +244,17 @@ function EditPage() {
 
       {/* Channels */}
       <Section label="3. Official channels">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-sm border border-dashed border-border bg-background/60 p-3">
+          <p className="text-xs text-muted-foreground">Merge in the artist's official site and verified social links from the canonical record.</p>
+          <button
+            onClick={() => autoSync.mutate()}
+            disabled={autoSync.isPending}
+            className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-1.5 text-xs hover:bg-surface-elevated disabled:opacity-50"
+          >
+            {autoSync.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Auto-sync from canonical
+          </button>
+        </div>
         <ListEditor
           items={channels}
           setItems={setChannels}
