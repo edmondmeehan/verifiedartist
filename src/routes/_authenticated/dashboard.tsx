@@ -4,10 +4,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { listArtists, createArtist, searchSpotifyArtists } from "@/lib/artists.functions";
 import { getMyOrg } from "@/lib/org.functions";
 import { AGENT_LABELS, scoreFromRuns, scoreTier, type Verdict } from "@/lib/verdict";
+import { LastSyncedBadge } from "@/components/LastSyncedBadge";
 import { useEffect, useState } from "react";
 import { Plus, TrendingDown, TrendingUp, Minus, Loader2, Search, Check } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
