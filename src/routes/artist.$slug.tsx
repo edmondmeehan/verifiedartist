@@ -14,7 +14,7 @@ export const Route = createFileRoute("/artist/$slug")({
     if (!data) throw notFound();
     return { page: data };
   },
-  head: ({ loaderData }) => {
+  head: ({ loaderData, params }) => {
     if (!loaderData) {
       return {
         meta: [
@@ -26,6 +26,7 @@ export const Route = createFileRoute("/artist/$slug")({
     const p = loaderData.page;
     const title = `${p.artist.name} — Artist Hub`;
     const description = (p.headline || `Verified information for ${p.artist.name}.`).slice(0, 160);
+    const feed = `/api/public/artist/${params.slug}`;
     return {
       meta: [
         { title },
@@ -35,9 +36,18 @@ export const Route = createFileRoute("/artist/$slug")({
         { property: "og:type", content: "profile" },
         ...(p.artist.imageUrl ? [{ property: "og:image", content: p.artist.imageUrl }] : []),
         { name: "twitter:card", content: p.artist.imageUrl ? "summary_large_image" : "summary" },
+        // AI-crawler hints: this page welcomes every major agent.
+        { name: "robots", content: "all" },
+        { name: "googlebot", content: "all" },
+      ],
+      links: [
+        // Answer-object feed — machine-readable for AI systems / MCP tools.
+        { rel: "alternate", type: "application/json", href: feed, title: "Answer objects (JSON)" },
+        { rel: "alternate", type: "text/markdown", href: `${feed}?format=md`, title: "Answer objects (Markdown)" },
       ],
     };
   },
+
   component: PublicArtistPage,
   notFoundComponent: ArtistNotFound,
   errorComponent: () => (

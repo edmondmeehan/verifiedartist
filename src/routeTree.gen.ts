@@ -22,6 +22,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedArtistsArtistIdRouteImport } from './routes/_authenticated/artists.$artistId'
 import { Route as AuthenticatedArtistPageArtistIdRouteImport } from './routes/_authenticated/artist-page.$artistId'
 import { Route as ApiPublicHooksConfirmPropagationRouteImport } from './routes/api/public/hooks/confirm-propagation'
+import { Route as ApiPublicArtistSlugRouteImport } from './routes/api/public/artist.$slug'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -90,6 +91,11 @@ const ApiPublicHooksConfirmPropagationRoute =
     path: '/api/public/hooks/confirm-propagation',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicArtistSlugRoute = ApiPublicArtistSlugRouteImport.update({
+  id: '/api/public/artist/$slug',
+  path: '/api/public/artist/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/artist/$slug': typeof ArtistSlugRoute
   '/artist-page/$artistId': typeof AuthenticatedArtistPageArtistIdRoute
   '/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
+  '/api/public/artist/$slug': typeof ApiPublicArtistSlugRoute
   '/api/public/hooks/confirm-propagation': typeof ApiPublicHooksConfirmPropagationRoute
 }
 export interface FileRoutesByTo {
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/artist/$slug': typeof ArtistSlugRoute
   '/artist-page/$artistId': typeof AuthenticatedArtistPageArtistIdRoute
   '/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
+  '/api/public/artist/$slug': typeof ApiPublicArtistSlugRoute
   '/api/public/hooks/confirm-propagation': typeof ApiPublicHooksConfirmPropagationRoute
 }
 export interface FileRoutesById {
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/artist/$slug': typeof ArtistSlugRoute
   '/_authenticated/artist-page/$artistId': typeof AuthenticatedArtistPageArtistIdRoute
   '/_authenticated/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
+  '/api/public/artist/$slug': typeof ApiPublicArtistSlugRoute
   '/api/public/hooks/confirm-propagation': typeof ApiPublicHooksConfirmPropagationRoute
 }
 export interface FileRouteTypes {
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/artist/$slug'
     | '/artist-page/$artistId'
     | '/artists/$artistId'
+    | '/api/public/artist/$slug'
     | '/api/public/hooks/confirm-propagation'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/artist/$slug'
     | '/artist-page/$artistId'
     | '/artists/$artistId'
+    | '/api/public/artist/$slug'
     | '/api/public/hooks/confirm-propagation'
   id:
     | '__root__'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/artist/$slug'
     | '/_authenticated/artist-page/$artistId'
     | '/_authenticated/artists/$artistId'
+    | '/api/public/artist/$slug'
     | '/api/public/hooks/confirm-propagation'
   fileRoutesById: FileRoutesById
 }
@@ -186,6 +198,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ArtistSlugRoute: typeof ArtistSlugRoute
+  ApiPublicArtistSlugRoute: typeof ApiPublicArtistSlugRoute
   ApiPublicHooksConfirmPropagationRoute: typeof ApiPublicHooksConfirmPropagationRoute
 }
 
@@ -282,6 +295,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksConfirmPropagationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/artist/$slug': {
+      id: '/api/public/artist/$slug'
+      path: '/api/public/artist/$slug'
+      fullPath: '/api/public/artist/$slug'
+      preLoaderRoute: typeof ApiPublicArtistSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -315,6 +335,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ArtistSlugRoute: ArtistSlugRoute,
+  ApiPublicArtistSlugRoute: ApiPublicArtistSlugRoute,
   ApiPublicHooksConfirmPropagationRoute: ApiPublicHooksConfirmPropagationRoute,
 }
 export const routeTree = rootRouteImport
