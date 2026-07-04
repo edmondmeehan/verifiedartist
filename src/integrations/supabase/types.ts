@@ -19,6 +19,7 @@ export type Database = {
           bandsintown_id: string | null
           created_at: string
           id: string
+          image_url: string | null
           name: string
           official_site_url: string | null
           org_id: string
@@ -35,6 +36,7 @@ export type Database = {
           bandsintown_id?: string | null
           created_at?: string
           id?: string
+          image_url?: string | null
           name: string
           official_site_url?: string | null
           org_id: string
@@ -51,6 +53,7 @@ export type Database = {
           bandsintown_id?: string | null
           created_at?: string
           id?: string
+          image_url?: string | null
           name?: string
           official_site_url?: string | null
           org_id?: string

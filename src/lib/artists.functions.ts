@@ -40,7 +40,7 @@ export const listArtists = createServerFn({ method: "GET" })
 
     const { data: artists, error } = await supabase
       .from("artists")
-      .select("id, name, org_id, status, updated_at, official_site_url, spotify_id, spotify_synced_at")
+      .select("id, name, org_id, status, updated_at, official_site_url, spotify_id, spotify_synced_at, image_url")
       .in("org_id", orgIds)
       .order("name");
 
@@ -147,6 +147,7 @@ export const createArtist = createServerFn({ method: "POST" })
       spotify_id: data.spotify_id || null,
       spotify_snapshot: enrichment ? (enrichment as never) : null,
       spotify_synced_at: enrichment ? new Date().toISOString() : null,
+      image_url: enrichment?.image ?? null,
     }).select().single();
     if (error) throw new Error(error.message);
 
@@ -274,7 +275,7 @@ export const refreshArtistFromSpotify = createServerFn({ method: "POST" })
 
     const syncedAt = new Date().toISOString();
     await supabase.from("artists")
-      .update({ spotify_snapshot: enrichment as never, spotify_synced_at: syncedAt })
+      .update({ spotify_snapshot: enrichment as never, spotify_synced_at: syncedAt, image_url: enrichment.image ?? null })
       .eq("id", artist.id);
 
     return {

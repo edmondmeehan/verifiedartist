@@ -53,14 +53,23 @@ function ArtistDetail() {
       </Link>
 
       <header className="flex items-end justify-between border-b border-border pb-6">
-        <div>
-          <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Artist · {artist.status}</div>
-          <h1 className="mt-1 font-display text-4xl">{artist.name}</h1>
-          {artist.official_site_url && (
-            <a href={artist.official_site_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-muted-foreground hover:text-primary">
-              {artist.official_site_url}
-            </a>
+        <div className="flex items-end gap-5">
+          {artist.image_url && (
+            <img
+              src={artist.image_url}
+              alt={artist.name}
+              className="h-24 w-24 flex-shrink-0 rounded-sm border border-border object-cover"
+            />
           )}
+          <div>
+            <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Artist · {artist.status}</div>
+            <h1 className="mt-1 font-display text-4xl">{artist.name}</h1>
+            {artist.official_site_url && (
+              <a href={artist.official_site_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-muted-foreground hover:text-primary">
+                {artist.official_site_url}
+              </a>
+            )}
+          </div>
         </div>
         <div className="flex items-end gap-6">
           <RefreshSpotifyButton
