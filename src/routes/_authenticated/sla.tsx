@@ -199,7 +199,7 @@ function SLAReport() {
               <div className="mt-6 rounded-sm border border-border bg-surface p-5">
                 <div className="flex items-baseline justify-between">
                   <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Per-target SLA</div>
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Expected → actual · drift</div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Click a row for push timeline</div>
                 </div>
                 {targetStats.length === 0 ? (
                   <div className="mt-3 text-xs text-muted-foreground">No push history in this period.</div>
@@ -217,25 +217,48 @@ function SLAReport() {
                       </tr>
                     </thead>
                     <tbody>
-                      {targetStats.map((t) => (
-                        <tr key={t.target}>
-                          <td className="font-mono text-xs uppercase">{t.target.replace(/_/g, " ")}</td>
-                          <td className="text-xs">{t.pushed}</td>
-                          <td className="text-xs text-muted-foreground">
-                            {t.confirmed}/{t.pushed}
-                          </td>
-                          <td className="font-mono text-xs text-muted-foreground">{t.expected !== null ? fmtHours(t.expected) : "—"}</td>
-                          <td className="font-mono text-xs">{t.actual !== null ? fmtHours(t.actual) : "—"}</td>
-                          <td
-                            className={`font-mono text-xs ${
-                              t.drift === null ? "text-muted-foreground" : t.drift > 6 ? "text-verdict-wrong" : t.drift > 1 ? "text-verdict-stale" : "text-verdict-accurate"
-                            }`}
-                          >
-                            {t.drift === null ? "—" : `${t.drift >= 0 ? "+" : ""}${fmtHours(t.drift)}`}
-                          </td>
-                          <td className={`text-xs ${t.slaPct >= 90 ? "text-verdict-accurate" : t.slaPct >= 70 ? "text-verdict-stale" : "text-verdict-wrong"}`}>{t.slaPct}%</td>
-                        </tr>
-                      ))}
+                      {targetStats.map((t) => {
+                        const isOpen = expandedTarget === t.target;
+                        return (
+                          <>
+                            <tr
+                              key={t.target}
+                              onClick={() => setExpandedTarget(isOpen ? null : t.target)}
+                              className={`cursor-pointer hover:bg-surface-elevated ${isOpen ? "bg-surface-elevated" : ""}`}
+                            >
+                              <td className="font-mono text-xs uppercase">
+                                <span className="mr-1 inline-block w-3 text-muted-foreground">{isOpen ? "▾" : "▸"}</span>
+                                {t.target.replace(/_/g, " ")}
+                              </td>
+                              <td className="text-xs">{t.pushed}</td>
+                              <td className="text-xs text-muted-foreground">
+                                {t.confirmed}/{t.pushed}
+                              </td>
+                              <td className="font-mono text-xs text-muted-foreground">{t.expected !== null ? fmtHours(t.expected) : "—"}</td>
+                              <td className="font-mono text-xs">{t.actual !== null ? fmtHours(t.actual) : "—"}</td>
+                              <td
+                                className={`font-mono text-xs ${
+                                  t.drift === null ? "text-muted-foreground" : t.drift > 6 ? "text-verdict-wrong" : t.drift > 1 ? "text-verdict-stale" : "text-verdict-accurate"
+                                }`}
+                              >
+                                {t.drift === null ? "—" : `${t.drift >= 0 ? "+" : ""}${fmtHours(t.drift)}`}
+                              </td>
+                              <td className={`text-xs ${t.slaPct >= 90 ? "text-verdict-accurate" : t.slaPct >= 70 ? "text-verdict-stale" : "text-verdict-wrong"}`}>{t.slaPct}%</td>
+                            </tr>
+                            {isOpen && (
+                              <tr key={`${t.target}-detail`}>
+                                <td colSpan={7} className="bg-background p-0">
+                                  <TargetTimeline
+                                    target={t.target}
+                                    expected={t.expected}
+                                    logs={stats.logs.filter((l) => l.target === t.target)}
+                                  />
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
