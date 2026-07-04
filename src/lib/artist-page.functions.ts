@@ -128,6 +128,8 @@ export const getMyArtistPage = createServerFn({ method: "GET" })
       live_snapshot: { headline: "", dates: [], moreNote: "" },
       official_channels: [],
       faq: [],
+      footer_badge_text: "Verified info",
+      footer_caption: "ChatGPT, Claude, Perplexity and Gemini pull answers from this page.",
     };
     const { data: created, error } = await supabase
       .from("artist_public_pages")
