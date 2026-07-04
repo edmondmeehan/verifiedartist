@@ -123,7 +123,7 @@ function UserManagement({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
   return (
     <div className="p-8">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Admin</div>
           <h1 className="mt-1 font-display text-3xl">User management</h1>
@@ -131,13 +131,18 @@ function UserManagement({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             Internal staff only. {isSuperAdmin ? "You have super admin rights." : "You have staff read access."}
           </p>
         </div>
-        <input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Filter by email or id…"
-          className="w-64 rounded-sm border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Filter by email or id…"
+            className="w-64 rounded-sm border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary"
+          />
+        </div>
       </div>
+
+      {isSuperAdmin && <CreateUserForm onCreated={invalidate} />}
+
 
       {usersQ.isLoading ? (
         <div className="mt-8 text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading users…</div>
