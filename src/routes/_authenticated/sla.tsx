@@ -167,6 +167,12 @@ function SLAReport() {
                   </table>
                 )}
               </div>
+function fmtHours(h: number): string {
+  const abs = Math.abs(h);
+  if (abs < 1) return `${Math.round(abs * 60)}m`;
+  if (abs < 24) return `${abs.toFixed(1)}h`;
+  return `${(abs / 24).toFixed(1)}d`;
+}
 
 
               <div className="mt-6 rounded-sm border border-border bg-surface p-5">
