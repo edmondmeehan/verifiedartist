@@ -23,6 +23,7 @@ import { Route as AuthenticatedArtistsArtistIdRouteImport } from './routes/_auth
 import { Route as AuthenticatedArtistPageArtistIdRouteImport } from './routes/_authenticated/artist-page.$artistId'
 import { Route as ApiPublicHooksConfirmPropagationRouteImport } from './routes/api/public/hooks/confirm-propagation'
 import { Route as ApiPublicArtistSlugRouteImport } from './routes/api/public/artist.$slug'
+import { Route as ApiPublicArtistsIdFooterSnippetRouteImport } from './routes/api/public/artists.$id.footer-snippet'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -96,6 +97,12 @@ const ApiPublicArtistSlugRoute = ApiPublicArtistSlugRouteImport.update({
   path: '/api/public/artist/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicArtistsIdFooterSnippetRoute =
+  ApiPublicArtistsIdFooterSnippetRouteImport.update({
+    id: '/api/public/artists/$id/footer-snippet',
+    path: '/api/public/artists/$id/footer-snippet',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
   '/api/public/artist/$slug': typeof ApiPublicArtistSlugRoute
   '/api/public/hooks/confirm-propagation': typeof ApiPublicHooksConfirmPropagationRoute
+  '/api/public/artists/$id/footer-snippet': typeof ApiPublicArtistsIdFooterSnippetRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -126,6 +134,7 @@ export interface FileRoutesByTo {
   '/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
   '/api/public/artist/$slug': typeof ApiPublicArtistSlugRoute
   '/api/public/hooks/confirm-propagation': typeof ApiPublicHooksConfirmPropagationRoute
+  '/api/public/artists/$id/footer-snippet': typeof ApiPublicArtistsIdFooterSnippetRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -143,6 +152,7 @@ export interface FileRoutesById {
   '/_authenticated/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
   '/api/public/artist/$slug': typeof ApiPublicArtistSlugRoute
   '/api/public/hooks/confirm-propagation': typeof ApiPublicHooksConfirmPropagationRoute
+  '/api/public/artists/$id/footer-snippet': typeof ApiPublicArtistsIdFooterSnippetRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/artists/$artistId'
     | '/api/public/artist/$slug'
     | '/api/public/hooks/confirm-propagation'
+    | '/api/public/artists/$id/footer-snippet'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/artists/$artistId'
     | '/api/public/artist/$slug'
     | '/api/public/hooks/confirm-propagation'
+    | '/api/public/artists/$id/footer-snippet'
   id:
     | '__root__'
     | '/'
@@ -191,6 +203,7 @@ export interface FileRouteTypes {
     | '/_authenticated/artists/$artistId'
     | '/api/public/artist/$slug'
     | '/api/public/hooks/confirm-propagation'
+    | '/api/public/artists/$id/footer-snippet'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -200,6 +213,7 @@ export interface RootRouteChildren {
   ArtistSlugRoute: typeof ArtistSlugRoute
   ApiPublicArtistSlugRoute: typeof ApiPublicArtistSlugRoute
   ApiPublicHooksConfirmPropagationRoute: typeof ApiPublicHooksConfirmPropagationRoute
+  ApiPublicArtistsIdFooterSnippetRoute: typeof ApiPublicArtistsIdFooterSnippetRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -302,6 +316,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicArtistSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/artists/$id/footer-snippet': {
+      id: '/api/public/artists/$id/footer-snippet'
+      path: '/api/public/artists/$id/footer-snippet'
+      fullPath: '/api/public/artists/$id/footer-snippet'
+      preLoaderRoute: typeof ApiPublicArtistsIdFooterSnippetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -337,6 +358,7 @@ const rootRouteChildren: RootRouteChildren = {
   ArtistSlugRoute: ArtistSlugRoute,
   ApiPublicArtistSlugRoute: ApiPublicArtistSlugRoute,
   ApiPublicHooksConfirmPropagationRoute: ApiPublicHooksConfirmPropagationRoute,
+  ApiPublicArtistsIdFooterSnippetRoute: ApiPublicArtistsIdFooterSnippetRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
