@@ -416,8 +416,9 @@ function CanonicalEditor({ artistId, canonical }: { artistId: string; canonical:
       const key = (d: { date: string; venue: string }) => `${d.date.trim().toLowerCase()}|${d.venue.trim().toLowerCase()}`;
       const existing = new Set(data.tour_dates.map((d) => key(d)));
       const additions = res.dates
-        .filter((d) => !existing.has(key(d)))
-        .map((d) => ({
+        .filter((d: { date: string; venue: string }) => !existing.has(key(d)))
+        .map((d: { date: string; venue: string; city: string; country: string; ticketUrl: string; status: string }) => ({
+
           date: d.date,
           venue: d.venue,
           city: d.city,
