@@ -7,7 +7,9 @@ import {
   setArtistPagePublished,
   syncArtistPageFromCanonical,
   generateArtistPageWithAI,
+  fetchTourDatesWithAI,
 } from "@/lib/artist-page.functions";
+
 import { Loader2, ExternalLink, Plus, Trash2, Save, Eye, EyeOff, ArrowLeft, Copy, RefreshCw, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -28,7 +30,9 @@ function EditPage() {
   const pubFn = useServerFn(setArtistPagePublished);
   const syncFn = useServerFn(syncArtistPageFromCanonical);
   const aiFn = useServerFn(generateArtistPageWithAI);
+  const tourFn = useServerFn(fetchTourDatesWithAI);
   const qc = useQueryClient();
+
 
   const q = useQuery({
     queryKey: ["artist-page", artistId],
@@ -148,6 +152,31 @@ function EditPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const fetchTour = useMutation({
+    mutationFn: () => tourFn({ data: { artistId } }),
+    onSuccess: (res) => {
+      if (res.headline) setSnapshotHeadline(res.headline);
+      if (res.moreNote) setMoreNote(res.moreNote);
+      if (res.dates?.length) {
+        setDates((prev) => {
+          const key = (d: DateRow) => `${d.date.trim().toLowerCase()}|${d.venue.trim().toLowerCase()}`;
+          const seen = new Set(prev.map(key));
+          const additions = res.dates
+            .map((d: { date: string; venue: string; city: string; type: string }) => ({ date: d.date, venue: d.venue, city: d.city, type: d.type }))
+            .filter((d: DateRow) => !seen.has(key(d)));
+
+          return [...prev, ...additions];
+        });
+        toast.success(`Found ${res.dates.length} tour date${res.dates.length === 1 ? "" : "s"}. Review and Save.`);
+      } else {
+        toast.info("No verified tour dates found right now.");
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
 
   if (q.isLoading || !q.data) {
     return <div className="p-8 text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>;
@@ -274,8 +303,20 @@ function EditPage() {
             Auto-sync from canonical
           </button>
         </div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-sm border border-dashed border-border bg-background/60 p-3">
+          <p className="text-xs text-muted-foreground">Pull the most recent and upcoming tour dates with AI (uses web search across official + ticketing sources).</p>
+          <button
+            onClick={() => fetchTour.mutate()}
+            disabled={fetchTour.isPending}
+            className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-1.5 text-xs hover:bg-surface-elevated disabled:opacity-50"
+          >
+            {fetchTour.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            Fetch tour dates with AI
+          </button>
+        </div>
         <LabelledInput label="Snapshot headline" value={snapshotHeadline} onChange={setSnapshotHeadline} placeholder="34 verified dates. Next stop is…" />
         <div className="mt-4">
+
           <ListEditor
             items={dates}
             setItems={setDates}

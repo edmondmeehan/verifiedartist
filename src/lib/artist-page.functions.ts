@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { anthropicJson } from "@/lib/anthropic.server";
+import { anthropicCall, anthropicJson } from "@/lib/anthropic.server";
 import { z } from "zod";
+
 
 // ---- Schemas ---------------------------------------------------------------
 
@@ -400,5 +401,92 @@ export const getPublicArtistPage = createServerFn({ method: "GET" })
         imageUrl: artist?.image_url ?? null,
         officialSiteUrl: artist?.official_site_url ?? null,
       },
+    };
+  });
+
+// ---- AI: fetch recent/upcoming tour dates via web search --------------------
+
+export const fetchTourDatesWithAI = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ artistId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const artist = await assertArtistMember(supabase, userId, data.artistId);
+
+    const { data: artistRow } = await supabase
+      .from("artists")
+      .select("name, official_site_url")
+      .eq("id", artist.id)
+      .maybeSingle();
+
+    const name = (artistRow as any)?.name ?? artist.name;
+    const officialSite = (artistRow as any)?.official_site_url ?? null;
+    const today = new Date().toISOString().slice(0, 10);
+
+    const system =
+      "You research live music tour dates using web search. " +
+      "Return ONLY tour dates you can verify from official or reputable ticketing sources " +
+      "(the artist's official site, Bandsintown, Songkick, Ticketmaster, AXS, DICE, or venue pages). " +
+      "Never invent, guess, or extrapolate dates. If you cannot verify anything, return an empty list.";
+
+    const prompt = `Find the most recent and upcoming confirmed tour dates for the artist "${name}"${
+      officialSite ? ` (official site: ${officialSite})` : ""
+    }.
+
+Today is ${today}. Prefer upcoming dates; include recent past shows only if very few upcoming ones exist.
+Use web_search to check the artist's official tour/tickets page first, then reputable aggregators (Bandsintown, Songkick, Ticketmaster).
+
+Return ONLY a JSON object with this exact shape and nothing else — no prose, no markdown fences:
+
+{
+  "headline": string,                  // one factual sentence like "12 confirmed dates through Aug 2026, next stop Fox Theatre, Atlanta."
+  "moreNote": string,                  // optional short pointer like "Full tour on artist's Tickets page." — empty string if none
+  "dates": Array<{
+    "date": string,                    // human-readable, e.g. "July 10, 2026"
+    "venue": string,                   // venue name
+    "city": string,                    // "City, ST" or "City, Country"
+    "type": string                     // short tag: "Theater", "Festival", "Arena", "Club", or "" if unknown
+  }>
+}
+
+Rules:
+- Max 20 dates, sorted soonest first.
+- Every date MUST come from a source you actually opened in web_search results.
+- If you find nothing verifiable, return { "headline": "", "moreNote": "", "dates": [] }.`;
+
+    const raw = await anthropicCall(prompt, {
+      system,
+      useWebSearch: true,
+      maxTokens: 3000,
+    });
+
+    // Extract the JSON object from the text response.
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (match) {
+        try { parsed = JSON.parse(match[0]); } catch { parsed = null; }
+      }
+    }
+    if (!parsed || typeof parsed !== "object") {
+      return { headline: "", moreNote: "", dates: [] as { date: string; venue: string; city: string; type: string }[] };
+    }
+
+    const dates = Array.isArray(parsed.dates) ? parsed.dates : [];
+    return {
+      headline: String(parsed.headline ?? "").slice(0, 600),
+      moreNote: String(parsed.moreNote ?? "").slice(0, 300),
+      dates: dates
+        .filter((d: any) => d && typeof d.date === "string" && d.date.trim())
+        .slice(0, 20)
+        .map((d: any) => ({
+          date: String(d.date ?? "").slice(0, 60),
+          venue: String(d.venue ?? "").slice(0, 200),
+          city: String(d.city ?? "").slice(0, 200),
+          type: String(d.type ?? "").slice(0, 60),
+        })),
     };
   });
