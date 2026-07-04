@@ -138,18 +138,17 @@ function RefreshSpotifyButton({
         {mutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
         Refresh from Spotify
       </button>
-      <div className="text-right font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-        {syncedAt ? (
-          <>
-            Synced {formatDistanceToNow(new Date(syncedAt), { addSuffix: true })}
-            {snapshot?.followers != null && <> · {snapshot.followers.toLocaleString()} followers</>}
-          </>
-        ) : (
-          <>Never synced</>
+      <div className="flex items-center gap-2">
+        <LastSyncedBadge syncedAt={syncedAt} />
+        {snapshot?.followers != null && (
+          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            {snapshot.followers.toLocaleString()} followers
+          </span>
         )}
       </div>
     </div>
   );
+
 }
 
 /* --------------- REPORT CARD --------------- */
