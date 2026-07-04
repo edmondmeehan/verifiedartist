@@ -23,6 +23,8 @@ export type Database = {
           official_site_url: string | null
           org_id: string
           spotify_id: string | null
+          spotify_snapshot: Json | null
+          spotify_synced_at: string | null
           status: Database["public"]["Enums"]["artist_status"]
           updated_at: string
           wikidata_qid: string | null
@@ -37,6 +39,8 @@ export type Database = {
           official_site_url?: string | null
           org_id: string
           spotify_id?: string | null
+          spotify_snapshot?: Json | null
+          spotify_synced_at?: string | null
           status?: Database["public"]["Enums"]["artist_status"]
           updated_at?: string
           wikidata_qid?: string | null
@@ -51,6 +55,8 @@ export type Database = {
           official_site_url?: string | null
           org_id?: string
           spotify_id?: string | null
+          spotify_snapshot?: Json | null
+          spotify_synced_at?: string | null
           status?: Database["public"]["Enums"]["artist_status"]
           updated_at?: string
           wikidata_qid?: string | null

@@ -144,6 +144,8 @@ export const createArtist = createServerFn({ method: "POST" })
       name: resolvedName,
       official_site_url: data.official_site_url || null,
       spotify_id: data.spotify_id || null,
+      spotify_snapshot: enrichment ? (enrichment as never) : null,
+      spotify_synced_at: enrichment ? new Date().toISOString() : null,
     }).select().single();
     if (error) throw new Error(error.message);
 
@@ -268,6 +270,11 @@ export const refreshArtistFromSpotify = createServerFn({ method: "POST" })
       artist_id: artist.id, version: nextVersion, data: merged as never, is_current: true, created_by: context.userId,
     });
     if (insErr) throw new Error(insErr.message);
+
+    const syncedAt = new Date().toISOString();
+    await supabase.from("artists")
+      .update({ spotify_snapshot: enrichment as never, spotify_synced_at: syncedAt })
+      .eq("id", artist.id);
 
     return {
       version: nextVersion,
