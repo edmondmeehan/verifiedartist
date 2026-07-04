@@ -10,7 +10,7 @@ import { Loader2, ExternalLink, Plus, Trash2, Save, Eye, EyeOff, ArrowLeft, Copy
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/artists/$artistId/public-page")({
+export const Route = createFileRoute("/_authenticated/artist-page/$artistId")({
   component: EditPage,
 });
 
