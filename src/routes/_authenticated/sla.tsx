@@ -37,14 +37,19 @@ export const Route = createFileRoute("/_authenticated/sla")({
 
 function SLAReport() {
   const search = Route.useSearch();
-  const navigate = useNavigate();
+  const from = startOfDay(new Date(search.from));
+  const to = endOfDay(new Date(search.to));
+  const periodLabel = `${format(from, "MMM d, yyyy")} – ${format(to, "MMM d, yyyy")}`;
+
+  const navigate = useNavigate({ from: "/sla" });
   const updateRange = (patch: { from?: Date; to?: Date }) => {
     navigate({
-      search: (prev) => ({
-        ...prev,
-        from: patch.from ? startOfDay(patch.from).toISOString() : prev.from,
-        to: patch.to ? endOfDay(patch.to).toISOString() : prev.to,
-      }),
+      search: (prev) => {
+        const next = { ...prev };
+        if (patch.from) next.from = startOfDay(patch.from).toISOString();
+        if (patch.to) next.to = endOfDay(patch.to).toISOString();
+        return next;
+      },
     });
   };
 
@@ -63,7 +68,7 @@ function SLAReport() {
     if (!detail.data) return null;
     const logs = detail.data.logs.filter((l) => {
       const pushed = new Date(l.pushed_at);
-      return (!isBefore(pushed, from) || isBefore(pushed, from) === false) && !isAfter(pushed, to);
+      return !isBefore(pushed, from) && !isAfter(pushed, to);
     });
     const confirmed = logs.filter((l) => l.propagation_confirmed_at);
     const slaMet = logs.filter((l) => l.sla_met === true);
