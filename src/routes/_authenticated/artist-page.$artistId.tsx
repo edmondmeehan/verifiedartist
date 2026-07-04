@@ -224,6 +224,10 @@ function EditPage() {
         artistName={(q.data as any).artist?.name ?? "this artist"}
         publicUrl={publicUrl}
         published={published}
+        badgeText={footerBadgeText}
+        caption={footerCaption}
+        onBadgeTextChange={setFooterBadgeText}
+        onCaptionChange={setFooterCaption}
       />
 
 
