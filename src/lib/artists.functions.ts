@@ -271,6 +271,11 @@ export const refreshArtistFromSpotify = createServerFn({ method: "POST" })
     });
     if (insErr) throw new Error(insErr.message);
 
+    const syncedAt = new Date().toISOString();
+    await supabase.from("artists")
+      .update({ spotify_snapshot: enrichment as never, spotify_synced_at: syncedAt })
+      .eq("id", artist.id);
+
     return {
       version: nextVersion,
       name: enrichment.name,
