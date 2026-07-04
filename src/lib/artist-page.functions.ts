@@ -251,6 +251,89 @@ export const syncArtistPageFromCanonical = createServerFn({ method: "GET" })
     };
   });
 
+// AI-populate: use canonical + Spotify snapshot to draft page copy.
+export const generateArtistPageWithAI = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ artistId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const artist = await assertArtistMember(supabase, userId, data.artistId);
+
+    const { data: artistRow } = await supabase
+      .from("artists")
+      .select("name, official_site_url, spotify_id, spotify_snapshot, genres")
+      .eq("id", artist.id)
+      .maybeSingle();
+    const { data: canonicalRow } = await supabase
+      .from("canonical_records")
+      .select("data")
+      .eq("artist_id", artist.id)
+      .eq("is_current", true)
+      .maybeSingle();
+
+    const facts = {
+      name: (artistRow as any)?.name ?? artist.name,
+      official_site_url: (artistRow as any)?.official_site_url ?? null,
+      genres: (artistRow as any)?.genres ?? [],
+      spotify_snapshot: (artistRow as any)?.spotify_snapshot ?? null,
+      canonical: (canonicalRow as any)?.data ?? null,
+    };
+
+    const system =
+      "You draft copy for an artist's official 'source of truth' page shown to fans. " +
+      "Use ONLY the facts provided. If a fact isn't in the input, leave that field empty rather than inventing. " +
+      "Tone: calm, factual, warm. No hype, no emojis, no hashtags.";
+
+    const prompt = `Draft page copy for the artist below. Return JSON exactly matching this TypeScript type:
+
+{
+  "headline": string,                     // 1-2 sentences under the artist name
+  "startHere": Array<{ "title": string, "description": string, "url": string }>,  // 3-5 Q&A style cards ("What is current with X", "Is X on tour", etc.)
+  "snapshotHeadline": string,             // one sentence summarizing latest release + follower/verified activity
+  "moreNote": string,                     // short pointer sentence for below the dates table
+  "faq": Array<{ "question": string, "answer": string }>   // 3-6 concise Q&As fans commonly ask
+}
+
+Rules:
+- Never invent tour dates, venues, or unverified claims.
+- Use the official site URL for card links when relevant; otherwise leave "url" as "".
+- Keep every field under the limits: headline <= 400 chars, description <= 400, answer <= 800.
+
+Artist facts (JSON):
+${JSON.stringify(facts, null, 2)}`;
+
+    type Draft = {
+      headline?: string;
+      startHere?: { title?: string; description?: string; url?: string }[];
+      snapshotHeadline?: string;
+      moreNote?: string;
+      faq?: { question?: string; answer?: string }[];
+    };
+
+    const draft = await anthropicJson<Draft>(prompt, { system, maxTokens: 1600 });
+
+    return {
+      headline: (draft.headline ?? "").toString().slice(0, 1000),
+      startHere: (draft.startHere ?? [])
+        .filter((c) => c && c.title)
+        .slice(0, 8)
+        .map((c) => ({
+          title: String(c.title ?? "").slice(0, 200),
+          description: String(c.description ?? "").slice(0, 600),
+          url: String(c.url ?? "").slice(0, 500),
+        })),
+      snapshotHeadline: (draft.snapshotHeadline ?? "").toString().slice(0, 600),
+      moreNote: (draft.moreNote ?? "").toString().slice(0, 300),
+      faq: (draft.faq ?? [])
+        .filter((f) => f && f.question && f.answer)
+        .slice(0, 10)
+        .map((f) => ({
+          question: String(f.question ?? "").slice(0, 300),
+          answer: String(f.answer ?? "").slice(0, 3000),
+        })),
+    };
+  });
+
 // ---- Public read (no auth) -------------------------------------------------
 
 export const getPublicArtistPage = createServerFn({ method: "GET" })
