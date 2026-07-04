@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/artist-page/$artistId")({
 });
 
 interface Card { title: string; description: string; url: string }
-interface DateRow { date: string; venue: string; city: string; type: string }
+interface DateRow { date: string; venue: string; city: string; type: string; ticketUrl: string }
 interface Channel { name: string; url: string; description: string }
 interface FaqRow { question: string; answer: string }
 
@@ -62,7 +62,7 @@ function EditPage() {
     setUpdatedLabel(p.intro_stats?.updatedLabel ?? "");
     setStartHere((p.start_here ?? []).map((c: any) => ({ title: c.title ?? "", description: c.description ?? "", url: c.url ?? "" })));
     setSnapshotHeadline(p.live_snapshot?.headline ?? "");
-    setDates((p.live_snapshot?.dates ?? []).map((d: any) => ({ date: d.date ?? "", venue: d.venue ?? "", city: d.city ?? "", type: d.type ?? "" })));
+    setDates((p.live_snapshot?.dates ?? []).map((d: any) => ({ date: d.date ?? "", venue: d.venue ?? "", city: d.city ?? "", type: d.type ?? "", ticketUrl: d.ticketUrl ?? "" })));
     setMoreNote(p.live_snapshot?.moreNote ?? "");
     setChannels((p.official_channels ?? []).map((c: any) => ({ name: c.name ?? "", url: c.url ?? "", description: c.description ?? "" })));
     setFaq((p.faq ?? []).map((f: any) => ({ question: f.question ?? "", answer: f.answer ?? "" })));
@@ -88,7 +88,7 @@ function EditPage() {
               .map((c) => ({ title: c.title.trim(), description: c.description.trim(), url: c.url.trim() || "" })),
             live_snapshot: {
               headline: snapshotHeadline.trim(),
-              dates: dates.filter((d) => d.date.trim()).map((d) => ({ date: d.date.trim(), venue: d.venue.trim(), city: d.city.trim(), type: d.type.trim() })),
+              dates: dates.filter((d) => d.date.trim()).map((d) => ({ date: d.date.trim(), venue: d.venue.trim(), city: d.city.trim(), type: d.type.trim(), ticketUrl: d.ticketUrl.trim() })),
               moreNote: moreNote.trim(),
             },
             official_channels: channels
@@ -163,8 +163,9 @@ function EditPage() {
           const key = (d: DateRow) => `${d.date.trim().toLowerCase()}|${d.venue.trim().toLowerCase()}`;
           const seen = new Set(prev.map(key));
           const additions = res.dates
-            .map((d: { date: string; venue: string; city: string; type: string }) => ({ date: d.date, venue: d.venue, city: d.city, type: d.type }))
+            .map((d: { date: string; venue: string; city: string; type: string; ticketUrl: string }) => ({ date: d.date, venue: d.venue, city: d.city, type: d.type, ticketUrl: d.ticketUrl }))
             .filter((d: DateRow) => !seen.has(key(d)));
+
 
           return [...prev, ...additions];
         });
@@ -320,17 +321,19 @@ function EditPage() {
           <ListEditor
             items={dates}
             setItems={setDates}
-            empty={{ date: "", venue: "", city: "", type: "" }}
+            empty={{ date: "", venue: "", city: "", type: "", ticketUrl: "" }}
             render={(d, upd) => (
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
                 <LabelledInput label="Date" value={d.date} onChange={(v) => upd({ ...d, date: v })} placeholder="July 10, 2026" />
                 <LabelledInput label="Venue" value={d.venue} onChange={(v) => upd({ ...d, venue: v })} placeholder="Fox Theatre" />
                 <LabelledInput label="City" value={d.city} onChange={(v) => upd({ ...d, city: v })} placeholder="Atlanta, GA" />
                 <LabelledInput label="Type" value={d.type} onChange={(v) => upd({ ...d, type: v })} placeholder="Theater" />
+                <LabelledInput label="Tickets URL" value={d.ticketUrl} onChange={(v) => upd({ ...d, ticketUrl: v })} placeholder="https://ticketmaster.com/…" />
               </div>
             )}
             addLabel="Add date"
           />
+
         </div>
         <div className="mt-4">
           <LabelledInput label="Note under the table" value={moreNote} onChange={setMoreNote} placeholder="26 more verified dates on the Tickets page." />
