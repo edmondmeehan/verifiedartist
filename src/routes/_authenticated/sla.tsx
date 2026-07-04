@@ -56,6 +56,7 @@ function SLAReport() {
   const listFn = useServerFn(listArtists);
   const artistsQuery = useQuery({ queryKey: ["artists"], queryFn: () => listFn() });
   const [selected, setSelected] = useState<string | null>(null);
+  const [expandedTarget, setExpandedTarget] = useState<string | null>(null);
   const activeId = selected ?? artistsQuery.data?.[0]?.id ?? null;
   const detailFn = useServerFn(getArtistDetail);
   const detail = useQuery({
