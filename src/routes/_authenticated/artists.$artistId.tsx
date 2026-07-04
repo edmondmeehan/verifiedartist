@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getArtistDetail, saveCanonicalRecord } from "@/lib/artists.functions";
 import { runFullAudit, scoreManualAnswer, addAuditQuery, logDistribution } from "@/lib/audits.functions";
+import { fanOutCanonical, confirmDistribution } from "@/lib/distribution.functions";
 import { VerdictBadge } from "@/components/verdict-badge";
 import { AGENT_LABELS, AGENTS, scoreFromRuns, scoreTier, type Agent, type Verdict } from "@/lib/verdict";
 import { ArrowLeft, Loader2, Play, Plus, Save, Trash2, Zap, ChevronDown, ChevronRight } from "lucide-react";
@@ -312,9 +313,17 @@ function CanonicalEditor({ artistId, canonical }: { artistId: string; canonical:
   const [dirty, setDirty] = useState(false);
   const qc = useQueryClient();
   const saveFn = useServerFn(saveCanonicalRecord);
+  const fanFn = useServerFn(fanOutCanonical);
   const m = useMutation({
-    mutationFn: () => saveFn({ data: { artistId, data: data as unknown as Record<string, unknown> } }),
-    onSuccess: () => { toast.success("Canonical record saved. Ready to distribute."); setDirty(false); qc.invalidateQueries({ queryKey: ["artist", artistId] }); },
+    mutationFn: async () => {
+      await saveFn({ data: { artistId, data: data as unknown as Record<string, unknown> } });
+      return fanFn({ data: { artistId } });
+    },
+    onSuccess: (r) => {
+      toast.success(`Canonical saved · fanned out to ${r.pushed} target${r.pushed === 1 ? "" : "s"}`);
+      setDirty(false);
+      qc.invalidateQueries({ queryKey: ["artist", artistId] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
   function update<K extends keyof CanonicalData>(k: K, v: CanonicalData[K]) { setData((d) => ({ ...d, [k]: v })); setDirty(true); }
@@ -447,15 +456,47 @@ const TARGET_LABELS: Record<string, string> = {
 function DistributionPane({ artistId, targets, logs }: { artistId: string; targets: Awaited<ReturnType<typeof getArtistDetail>>["targets"]; logs: Awaited<ReturnType<typeof getArtistDetail>>["logs"] }) {
   const qc = useQueryClient();
   const logFn = useServerFn(logDistribution);
-  const m = useMutation({
+  const fanFn = useServerFn(fanOutCanonical);
+  const confirmFn = useServerFn(confirmDistribution);
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["artist", artistId] });
+
+  const pushOne = useMutation({
     mutationFn: (v: { target: string }) => logFn({ data: { artistId, target: v.target as never, payload_summary: "Manual push logged from UI" } }),
-    onSuccess: () => { toast.success("Push logged"); qc.invalidateQueries({ queryKey: ["artist", artistId] }); },
+    onSuccess: () => { toast.success("Push logged"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const fanOut = useMutation({
+    mutationFn: () => fanFn({ data: { artistId } }),
+    onSuccess: (r) => { toast.success(`Fanned out to ${r.pushed} target${r.pushed === 1 ? "" : "s"}${r.skipped ? ` · ${r.skipped} pending` : ""}`); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const confirm = useMutation({
+    mutationFn: (logId: string) => confirmFn({ data: { logId } }),
+    onSuccess: (r) => { toast.success(r.sla_met ? "Confirmed · within SLA" : "Confirmed · SLA missed"); invalidate(); },
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const totalPushes = logs.length;
+  const confirmedCount = logs.filter((l) => l.propagation_confirmed_at).length;
+  const pendingCount = totalPushes - confirmedCount;
+  const slaMetCount = logs.filter((l) => l.sla_met === true).length;
+  const slaPct = totalPushes ? Math.round((slaMetCount / totalPushes) * 100) : null;
+
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      <div className="lg:col-span-2">
+      <div className="lg:col-span-2 space-y-6">
+        <div className="flex items-center justify-between rounded-sm border border-border bg-surface px-4 py-3">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Fan-out engine</div>
+            <div className="mt-0.5 text-sm">Push the current canonical version to every connected target.</div>
+          </div>
+          <button onClick={() => fanOut.mutate()} disabled={fanOut.isPending}
+            className="inline-flex items-center gap-1.5 rounded-sm bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50">
+            {fanOut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+            Distribute now
+          </button>
+        </div>
+
         <div className="grid gap-3 md:grid-cols-2">
           {targets.map((t) => {
             const targetLogs = logs.filter((l) => l.target === t.target);
@@ -470,7 +511,7 @@ function DistributionPane({ artistId, targets, logs }: { artistId: string; targe
                       t.status === "error" ? "text-verdict-wrong" : "text-muted-foreground"
                     }`}>{t.status}</div>
                   </div>
-                  <button onClick={() => m.mutate({ target: t.target })} disabled={m.isPending}
+                  <button onClick={() => pushOne.mutate({ target: t.target })} disabled={pushOne.isPending}
                     className="rounded-sm border border-border px-2.5 py-1 text-xs hover:bg-surface-elevated disabled:opacity-50">
                     Log push
                   </button>
@@ -479,15 +520,29 @@ function DistributionPane({ artistId, targets, logs }: { artistId: string; targe
                   {t.last_pushed_at ? `Last push ${formatDistanceToNow(new Date(t.last_pushed_at))} ago` : "Never pushed"}
                 </div>
                 {targetLogs.length > 0 && (
-                  <div className="mt-3 border-t border-border pt-2 font-mono text-[10px] text-muted-foreground">
-                    {targetLogs.slice(0, 3).map((l) => (
-                      <div key={l.id} className="flex justify-between">
-                        <span>{format(new Date(l.pushed_at), "MMM d HH:mm")}</span>
-                        <span className={l.sla_met === true ? "text-verdict-accurate" : l.sla_met === false ? "text-verdict-wrong" : ""}>
-                          {l.propagation_confirmed_at ? "confirmed" : "pending"}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="mt-3 space-y-1 border-t border-border pt-2 font-mono text-[10px]">
+                    {targetLogs.slice(0, 3).map((l) => {
+                      const status = l.propagation_confirmed_at
+                        ? (l.sla_met ? "confirmed · SLA met" : "confirmed · SLA missed")
+                        : "pending";
+                      const cls = l.propagation_confirmed_at
+                        ? (l.sla_met ? "text-verdict-accurate" : "text-verdict-wrong")
+                        : "text-verdict-stale";
+                      return (
+                        <div key={l.id} className="flex items-center justify-between gap-2">
+                          <span className="text-muted-foreground">{format(new Date(l.pushed_at), "MMM d HH:mm")}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={cls}>{status}</span>
+                            {!l.propagation_confirmed_at && (
+                              <button onClick={() => confirm.mutate(l.id)} disabled={confirm.isPending}
+                                className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground hover:text-primary">
+                                mark
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -496,17 +551,18 @@ function DistributionPane({ artistId, targets, logs }: { artistId: string; targe
         </div>
       </div>
 
-      <aside>
+      <aside className="space-y-4">
         <div className="rounded-sm border border-border bg-surface p-5">
           <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">SLA</div>
           <div className="mt-1 font-display text-3xl">48h</div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Every canonical change must propagate to every connected retrieval source within 48 hours. Manual targets (Wikidata) require a checklist.
+            Every canonical change must propagate to every connected retrieval source within 48 hours. Auto-confirmation runs every 15 minutes.
           </p>
           <div className="mt-4 border-t border-border pt-3 text-xs">
-            <div className="mb-1 flex justify-between"><span className="text-muted-foreground">Total pushes</span><span>{logs.length}</span></div>
-            <div className="mb-1 flex justify-between"><span className="text-muted-foreground">Confirmed</span><span>{logs.filter((l) => l.propagation_confirmed_at).length}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Pending</span><span>{logs.filter((l) => !l.propagation_confirmed_at).length}</span></div>
+            <div className="mb-1 flex justify-between"><span className="text-muted-foreground">Total pushes</span><span>{totalPushes}</span></div>
+            <div className="mb-1 flex justify-between"><span className="text-muted-foreground">Confirmed</span><span className="text-verdict-accurate">{confirmedCount}</span></div>
+            <div className="mb-1 flex justify-between"><span className="text-muted-foreground">Pending</span><span className="text-verdict-stale">{pendingCount}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">SLA met</span><span>{slaPct === null ? "—" : `${slaPct}%`}</span></div>
           </div>
         </div>
       </aside>
