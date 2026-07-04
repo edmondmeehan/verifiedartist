@@ -220,3 +220,60 @@ export const saveCanonicalRecord = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return inserted;
   });
+
+export const refreshArtistFromSpotify = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ artistId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase;
+    const { data: artist, error: aErr } = await supabase
+      .from("artists").select("id, name, spotify_id").eq("id", data.artistId).maybeSingle();
+    if (aErr) throw new Error(aErr.message);
+    if (!artist) throw new Error("Artist not found");
+    if (!artist.spotify_id) throw new Error("No Spotify ID linked to this artist. Add it in Canonical Record → socials or re-create the artist with a Spotify search.");
+
+    const { getArtistEnrichment } = await import("./spotify.server");
+    const enrichment = await getArtistEnrichment(artist.spotify_id);
+
+    const { data: current } = await supabase
+      .from("canonical_records").select("*").eq("artist_id", artist.id).eq("is_current", true).maybeSingle();
+    const base = (current?.data ?? {}) as Record<string, unknown>;
+    const baseSocials = (base.socials as Record<string, string> | undefined) ?? {};
+    const baseBio = (base.bio as { short?: string; long?: string } | undefined) ?? { short: "", long: "" };
+
+    const merged: Record<string, unknown> = {
+      ...base,
+      genres: enrichment.genres,
+      latest_release: enrichment.latest_release
+        ? {
+            title: enrichment.latest_release.title,
+            date: enrichment.latest_release.date,
+            links: {
+              ...((base.latest_release as { links?: Record<string, string> } | undefined)?.links ?? {}),
+              spotify: enrichment.latest_release.url,
+            },
+          }
+        : base.latest_release,
+      socials: { ...baseSocials, spotify: enrichment.spotify_url },
+      bio: {
+        short: `${enrichment.name} — ${enrichment.genres.slice(0, 3).join(", ") || "artist"} · ${enrichment.followers.toLocaleString()} Spotify followers.`,
+        long: baseBio.long ?? "",
+      },
+    };
+
+    const nextVersion = (current?.version ?? 0) + 1;
+    await supabase.from("canonical_records").update({ is_current: false })
+      .eq("artist_id", artist.id).eq("is_current", true);
+    const { error: insErr } = await supabase.from("canonical_records").insert({
+      artist_id: artist.id, version: nextVersion, data: merged as never, is_current: true, created_by: context.userId,
+    });
+    if (insErr) throw new Error(insErr.message);
+
+    return {
+      version: nextVersion,
+      name: enrichment.name,
+      genres: enrichment.genres,
+      followers: enrichment.followers,
+      latest_release: enrichment.latest_release,
+    };
+  });
