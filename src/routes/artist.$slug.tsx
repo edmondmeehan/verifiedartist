@@ -104,8 +104,39 @@ function PublicArtistPage() {
     introStats?.updatedLabel ||
     new Date(updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
+  // JSON-LD for AI crawlers (ChatGPT, Claude, Perplexity, Gemini) to cite.
+  const jsonLd: Record<string, unknown>[] = [
+    {
+      "@context": "https://schema.org",
+      "@type": "MusicGroup",
+      name: artist.name,
+      ...(artist.imageUrl ? { image: artist.imageUrl } : {}),
+      ...(artist.officialSiteUrl ? { url: artist.officialSiteUrl } : {}),
+      ...(headline ? { description: headline } : {}),
+      ...(officialChannels.length
+        ? { sameAs: officialChannels.map((c: any) => c.url).filter(Boolean) }
+        : {}),
+    },
+  ];
+  if (faq.length > 0) {
+    jsonLd.push({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faq.map((f: any) => ({
+        "@type": "Question",
+        name: f.question,
+        acceptedAnswer: { "@type": "Answer", text: f.answer },
+      })),
+    });
+  }
+
   return (
     <PageShell>
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Nav strip */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", border: `1px solid ${RULE}`, borderRadius: 4, background: CARD, marginBottom: 40, flexWrap: "wrap" }}>
         <TagChip label="Artist" muted />
