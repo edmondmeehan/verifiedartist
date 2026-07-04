@@ -36,6 +36,30 @@ function SLAReport() {
     return { logs, confirmed, slaMet, score, flagged };
   }, [detail.data, monthStart]);
 
+  const targetStats = useMemo(() => {
+    if (!stats) return [];
+    const byTarget = new Map<string, { pushed: number; confirmed: number; slaMet: number; totalHours: number }>();
+    for (const l of stats.logs) {
+      const cur = byTarget.get(l.target) ?? { pushed: 0, confirmed: 0, slaMet: 0, totalHours: 0 };
+      cur.pushed++;
+      if (l.propagation_confirmed_at) {
+        cur.confirmed++;
+        cur.totalHours += (new Date(l.propagation_confirmed_at).getTime() - new Date(l.pushed_at).getTime()) / 3600_000;
+      }
+      if (l.sla_met === true) cur.slaMet++;
+      byTarget.set(l.target, cur);
+    }
+    return Array.from(byTarget.entries())
+      .map(([target, s]) => {
+        const expected = TARGET_DELAY_HOURS[target] ?? null;
+        const actual = s.confirmed > 0 ? s.totalHours / s.confirmed : null;
+        const drift = expected !== null && actual !== null ? actual - expected : null;
+        const slaPct = s.pushed ? Math.round((s.slaMet / s.pushed) * 100) : 0;
+        return { target, ...s, expected, actual, drift, slaPct };
+      })
+      .sort((a, b) => b.pushed - a.pushed);
+  }, [stats]);
+
   function exportCsv() {
     if (!detail.data || !stats) return;
     const rows = [
