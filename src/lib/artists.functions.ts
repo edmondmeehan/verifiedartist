@@ -105,6 +105,14 @@ export const getArtistDetail = createServerFn({ method: "GET" })
     };
   });
 
+export const searchSpotifyArtists = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ query: z.string().min(1).max(100) }).parse(d))
+  .handler(async ({ data }) => {
+    const { searchArtists } = await import("./spotify.server");
+    return searchArtists(data.query);
+  });
+
 export const createArtist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -117,16 +125,47 @@ export const createArtist = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const supabase = context.supabase;
+
+    // Enrich from Spotify if a spotify_id was provided
+    let enrichment: Awaited<ReturnType<typeof import("./spotify.server").getArtistEnrichment>> | null = null;
+    if (data.spotify_id) {
+      try {
+        const { getArtistEnrichment } = await import("./spotify.server");
+        enrichment = await getArtistEnrichment(data.spotify_id);
+      } catch {
+        // non-fatal — continue without enrichment
+      }
+    }
+
+    const resolvedName = enrichment?.name || data.name;
+
     const { data: artist, error } = await supabase.from("artists").insert({
       org_id: data.orgId,
-      name: data.name,
+      name: resolvedName,
       official_site_url: data.official_site_url || null,
       spotify_id: data.spotify_id || null,
     }).select().single();
     if (error) throw new Error(error.message);
 
-    // Seed default canonical record v1
-    const seededCanonical = { ...DEFAULT_CANONICAL, bio: { short: `${data.name} — canonical record pending.`, long: "" } };
+    // Seed canonical record v1, populated from Spotify when available
+    const seededCanonical = {
+      ...DEFAULT_CANONICAL,
+      bio: {
+        short: enrichment
+          ? `${resolvedName} — ${enrichment.genres.slice(0, 3).join(", ") || "artist"} · ${enrichment.followers.toLocaleString()} Spotify followers.`
+          : `${resolvedName} — canonical record pending.`,
+        long: "",
+      },
+      genres: enrichment?.genres ?? [],
+      latest_release: enrichment?.latest_release
+        ? {
+            title: enrichment.latest_release.title,
+            date: enrichment.latest_release.date,
+            links: { spotify: enrichment.latest_release.url },
+          }
+        : DEFAULT_CANONICAL.latest_release,
+      socials: enrichment ? { spotify: enrichment.spotify_url } : {},
+    };
     await supabase.from("canonical_records").insert({
       artist_id: artist.id, version: 1, data: seededCanonical, is_current: true, created_by: context.userId,
     });
@@ -136,7 +175,7 @@ export const createArtist = createServerFn({ method: "POST" })
     await supabase.from("audit_queries").insert(
       DEFAULT_QUERIES.map((q) => ({
         artist_id: artist.id,
-        query_text: q.text.replace("{artist}", data.name).replace("{year}", String(year)),
+        query_text: q.text.replace("{artist}", resolvedName).replace("{year}", String(year)),
         category: q.category,
       })),
     );
