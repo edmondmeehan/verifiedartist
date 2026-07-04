@@ -53,6 +53,8 @@ const pageContentSchema = z.object({
   live_snapshot: liveSnapshotSchema.default({ dates: [] }),
   official_channels: z.array(channelRowSchema).max(20).default([]),
   faq: z.array(faqRowSchema).max(50).default([]),
+  footer_badge_text: z.string().trim().max(60).optional().default("Verified info"),
+  footer_caption: z.string().trim().max(300).optional().default("ChatGPT, Claude, Perplexity and Gemini pull answers from this page."),
 });
 
 // ---- Helpers ---------------------------------------------------------------
