@@ -60,9 +60,12 @@ function ArtistDetail() {
             </a>
           )}
         </div>
-        <div className="text-right">
-          <div className={`font-display text-6xl leading-none ${tier.color}`}>{score === null ? "—" : score}</div>
-          <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">AI Accuracy · {tier.label}</div>
+        <div className="flex items-end gap-6">
+          <RefreshSpotifyButton artistId={artist.id} hasSpotify={!!artist.spotify_id} />
+          <div className="text-right">
+            <div className={`font-display text-6xl leading-none ${tier.color}`}>{score === null ? "—" : score}</div>
+            <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">AI Accuracy · {tier.label}</div>
+          </div>
         </div>
       </header>
 
