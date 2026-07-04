@@ -21,6 +21,8 @@ function AuthedShell() {
   const router = useRouter();
   const fetchOrg = useServerFn(getMyOrg);
   const orgQuery = useQuery({ queryKey: ["my-org"], queryFn: () => fetchOrg() });
+  const platformFn = useServerFn(getMyPlatformStatus);
+  const platformQuery = useQuery({ queryKey: ["platform-status"], queryFn: () => platformFn() });
 
   async function signOut() {
     await supabase.auth.signOut();
