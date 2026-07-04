@@ -303,8 +303,20 @@ function EditPage() {
             Auto-sync from canonical
           </button>
         </div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-sm border border-dashed border-border bg-background/60 p-3">
+          <p className="text-xs text-muted-foreground">Pull the most recent and upcoming tour dates with AI (uses web search across official + ticketing sources).</p>
+          <button
+            onClick={() => fetchTour.mutate()}
+            disabled={fetchTour.isPending}
+            className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-1.5 text-xs hover:bg-surface-elevated disabled:opacity-50"
+          >
+            {fetchTour.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            Fetch tour dates with AI
+          </button>
+        </div>
         <LabelledInput label="Snapshot headline" value={snapshotHeadline} onChange={setSnapshotHeadline} placeholder="34 verified dates. Next stop is…" />
         <div className="mt-4">
+
           <ListEditor
             items={dates}
             setItems={setDates}
