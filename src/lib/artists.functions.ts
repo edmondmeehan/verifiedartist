@@ -275,7 +275,7 @@ export const refreshArtistFromSpotify = createServerFn({ method: "POST" })
 
     const syncedAt = new Date().toISOString();
     await supabase.from("artists")
-      .update({ spotify_snapshot: enrichment as never, spotify_synced_at: syncedAt })
+      .update({ spotify_snapshot: enrichment as never, spotify_synced_at: syncedAt, image_url: enrichment.image ?? null })
       .eq("id", artist.id);
 
     return {
