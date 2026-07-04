@@ -4,12 +4,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { getArtistDetail, saveCanonicalRecord, refreshArtistFromSpotify } from "@/lib/artists.functions";
 import { runFullAudit, scoreManualAnswer, addAuditQuery, logDistribution } from "@/lib/audits.functions";
 import { fanOutCanonical, confirmDistribution } from "@/lib/distribution.functions";
+import { LastSyncedBadge } from "@/components/LastSyncedBadge";
 import { VerdictBadge } from "@/components/verdict-badge";
 import { AGENT_LABELS, AGENTS, scoreFromRuns, scoreTier, type Agent, type Verdict } from "@/lib/verdict";
 import { ArrowLeft, Loader2, Play, Plus, RefreshCw, Save, Trash2, Zap, ChevronDown, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
+
 
 export const Route = createFileRoute("/_authenticated/artists/$artistId")({
   component: ArtistDetail,
