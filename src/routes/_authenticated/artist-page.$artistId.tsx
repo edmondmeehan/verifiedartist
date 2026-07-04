@@ -88,7 +88,7 @@ function EditPage() {
               .map((c) => ({ title: c.title.trim(), description: c.description.trim(), url: c.url.trim() || "" })),
             live_snapshot: {
               headline: snapshotHeadline.trim(),
-              dates: dates.filter((d) => d.date.trim()).map((d) => ({ date: d.date.trim(), venue: d.venue.trim(), city: d.city.trim(), type: d.type.trim() })),
+              dates: dates.filter((d) => d.date.trim()).map((d) => ({ date: d.date.trim(), venue: d.venue.trim(), city: d.city.trim(), type: d.type.trim(), ticketUrl: d.ticketUrl.trim() })),
               moreNote: moreNote.trim(),
             },
             official_channels: channels
