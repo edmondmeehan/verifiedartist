@@ -237,17 +237,30 @@ function PublicArtistPage() {
             </p>
           )}
           {(liveSnapshot.dates ?? []).length > 0 && (
-            <Table headers={["Date", "Venue", "City", "Type"]}>
-              {liveSnapshot.dates.map((d: any, i: number) => (
-                <tr key={i} style={{ borderTop: `1px solid ${RULE}` }}>
-                  <Td>{d.date}</Td>
-                  <Td>{d.venue}</Td>
-                  <Td>{d.city}</Td>
-                  <Td>{d.type}</Td>
-                </tr>
-              ))}
+            <Table headers={["Date", "Venue", "City", "Type", "Tickets"]}>
+              {liveSnapshot.dates.map((d: any, i: number) => {
+                const host = d.ticketUrl ? (() => { try { return new URL(d.ticketUrl).hostname.replace(/^www\./, ""); } catch { return "Tickets"; } })() : null;
+                return (
+                  <tr key={i} style={{ borderTop: `1px solid ${RULE}` }}>
+                    <Td>{d.date}</Td>
+                    <Td>{d.venue}</Td>
+                    <Td>{d.city}</Td>
+                    <Td>{d.type}</Td>
+                    <Td>
+                      {d.ticketUrl ? (
+                        <a href={d.ticketUrl} target="_blank" rel="noopener noreferrer" style={{ color: ACCENT, textDecoration: "underline" }}>
+                          {host}
+                        </a>
+                      ) : (
+                        <span style={{ color: MUTED }}>—</span>
+                      )}
+                    </Td>
+                  </tr>
+                );
+              })}
             </Table>
           )}
+
           {liveSnapshot.moreNote && (
             <p style={{ fontSize: 14, color: MUTED, marginTop: 12 }}>{liveSnapshot.moreNote}</p>
           )}
