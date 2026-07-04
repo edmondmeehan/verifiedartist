@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getArtistDetail, saveCanonicalRecord } from "@/lib/artists.functions";
+import { getArtistDetail, saveCanonicalRecord, refreshArtistFromSpotify } from "@/lib/artists.functions";
 import { runFullAudit, scoreManualAnswer, addAuditQuery, logDistribution } from "@/lib/audits.functions";
 import { fanOutCanonical, confirmDistribution } from "@/lib/distribution.functions";
 import { VerdictBadge } from "@/components/verdict-badge";
 import { AGENT_LABELS, AGENTS, scoreFromRuns, scoreTier, type Agent, type Verdict } from "@/lib/verdict";
-import { ArrowLeft, Loader2, Play, Plus, Save, Trash2, Zap, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, Loader2, Play, Plus, RefreshCw, Save, Trash2, Zap, ChevronDown, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
@@ -60,9 +60,12 @@ function ArtistDetail() {
             </a>
           )}
         </div>
-        <div className="text-right">
-          <div className={`font-display text-6xl leading-none ${tier.color}`}>{score === null ? "—" : score}</div>
-          <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">AI Accuracy · {tier.label}</div>
+        <div className="flex items-end gap-6">
+          <RefreshSpotifyButton artistId={artist.id} hasSpotify={!!artist.spotify_id} />
+          <div className="text-right">
+            <div className={`font-display text-6xl leading-none ${tier.color}`}>{score === null ? "—" : score}</div>
+            <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">AI Accuracy · {tier.label}</div>
+          </div>
         </div>
       </header>
 
@@ -85,6 +88,32 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   return (
     <button onClick={onClick} className={`border-b-2 px-4 py-2.5 text-sm font-semibold transition ${active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
       {children}
+    </button>
+  );
+}
+
+function RefreshSpotifyButton({ artistId, hasSpotify }: { artistId: string; hasSpotify: boolean }) {
+  const qc = useQueryClient();
+  const refreshFn = useServerFn(refreshArtistFromSpotify);
+  const mutation = useMutation({
+    mutationFn: () => refreshFn({ data: { artistId } }),
+    onSuccess: (r) => {
+      toast.success(`Spotify sync · ${r.followers.toLocaleString()} followers · ${r.genres.length} genres · v${r.version}`);
+      qc.invalidateQueries({ queryKey: ["artist", artistId] });
+      qc.invalidateQueries({ queryKey: ["artists"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  if (!hasSpotify) return null;
+  return (
+    <button
+      onClick={() => mutation.mutate()}
+      disabled={mutation.isPending}
+      title="Re-sync genres, followers, and latest release from Spotify"
+      className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:bg-surface-elevated hover:text-foreground disabled:opacity-50"
+    >
+      {mutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+      Refresh from Spotify
     </button>
   );
 }
