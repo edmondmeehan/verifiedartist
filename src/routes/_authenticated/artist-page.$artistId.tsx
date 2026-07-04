@@ -91,6 +91,8 @@ function EditPage() {
               .filter((c) => c.name.trim() && c.url.trim())
               .map((c) => ({ name: c.name.trim(), url: c.url.trim(), description: c.description.trim() })),
             faq: faq.filter((f) => f.question.trim() && f.answer.trim()).map((f) => ({ question: f.question.trim(), answer: f.answer.trim() })),
+            footer_badge_text: footerBadgeText.trim() || "Verified info",
+            footer_caption: footerCaption.trim() || "ChatGPT, Claude, Perplexity and Gemini pull answers from this page.",
           },
         },
       }),
