@@ -207,3 +207,10 @@ function Stat({ label, value, tier }: { label: string; value: string; tier?: str
     </div>
   );
 }
+
+function fmtHours(h: number): string {
+  const abs = Math.abs(h);
+  if (abs < 1) return `${Math.round(abs * 60)}m`;
+  if (abs < 24) return `${abs.toFixed(1)}h`;
+  return `${(abs / 24).toFixed(1)}d`;
+}
