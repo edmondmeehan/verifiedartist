@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyOrg } from "@/lib/org.functions";
-import { LayoutGrid, History, FileBarChart, Settings, LogOut } from "lucide-react";
+import { getMyPlatformStatus } from "@/lib/admin.functions";
+import { LayoutGrid, History, FileBarChart, Settings, LogOut, Shield } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -20,6 +21,8 @@ function AuthedShell() {
   const router = useRouter();
   const fetchOrg = useServerFn(getMyOrg);
   const orgQuery = useQuery({ queryKey: ["my-org"], queryFn: () => fetchOrg() });
+  const platformFn = useServerFn(getMyPlatformStatus);
+  const platformQuery = useQuery({ queryKey: ["platform-status"], queryFn: () => platformFn() });
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -47,6 +50,9 @@ function AuthedShell() {
           <NavItem to="/audits" icon={History} label="Audit history" />
           <NavItem to="/sla" icon={FileBarChart} label="SLA report" />
           <NavItem to="/settings" icon={Settings} label="Settings" />
+          {(platformQuery.data?.isStaff || platformQuery.data?.needsBootstrap) && (
+            <NavItem to="/admin" icon={Shield} label="Admin" />
+          )}
         </nav>
 
         <div className="border-t border-border p-3">
