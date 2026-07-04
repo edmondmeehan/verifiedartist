@@ -127,6 +127,18 @@ function PublicArtistPage() {
         ? { sameAs: officialChannels.map((c: any) => c.url).filter(Boolean) }
         : {}),
     },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: `${artist.name} — Artist Hub`,
+      dateModified: updatedAt,
+      inLanguage: "en",
+      about: { "@type": "MusicGroup", name: artist.name },
+      speakable: {
+        "@type": "SpeakableSpecification",
+        cssSelector: ["h1", "h2", "p"],
+      },
+    },
   ];
   if (faq.length > 0) {
     jsonLd.push({
@@ -139,6 +151,7 @@ function PublicArtistPage() {
       })),
     });
   }
+
 
   return (
     <PageShell>
