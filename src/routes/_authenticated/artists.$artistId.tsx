@@ -71,7 +71,7 @@ function ArtistDetail() {
             )}
             <div className="mt-2">
               <Link
-                to="/artists/$artistId/public-page"
+                to="/artist-page/$artistId"
                 params={{ artistId: artist.id }}
                 className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-surface px-2 py-1 text-xs text-muted-foreground hover:bg-surface-elevated hover:text-foreground"
               >
