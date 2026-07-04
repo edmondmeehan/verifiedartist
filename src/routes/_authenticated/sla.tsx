@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listArtists, getArtistDetail } from "@/lib/artists.functions";
+import { TARGET_DELAY_HOURS } from "@/lib/distribution.functions";
 import { scoreFromRuns, scoreTier, VERDICT_META, type Verdict } from "@/lib/verdict";
 import { useMemo, useState } from "react";
 import { format, subDays } from "date-fns";
@@ -34,6 +35,30 @@ function SLAReport() {
     const flagged = currentRuns.filter((r) => r.verdict === "wrong" || r.verdict === "stale").length;
     return { logs, confirmed, slaMet, score, flagged };
   }, [detail.data, monthStart]);
+
+  const targetStats = useMemo(() => {
+    if (!stats) return [];
+    const byTarget = new Map<string, { pushed: number; confirmed: number; slaMet: number; totalHours: number }>();
+    for (const l of stats.logs) {
+      const cur = byTarget.get(l.target) ?? { pushed: 0, confirmed: 0, slaMet: 0, totalHours: 0 };
+      cur.pushed++;
+      if (l.propagation_confirmed_at) {
+        cur.confirmed++;
+        cur.totalHours += (new Date(l.propagation_confirmed_at).getTime() - new Date(l.pushed_at).getTime()) / 3600_000;
+      }
+      if (l.sla_met === true) cur.slaMet++;
+      byTarget.set(l.target, cur);
+    }
+    return Array.from(byTarget.entries())
+      .map(([target, s]) => {
+        const expected = TARGET_DELAY_HOURS[target] ?? null;
+        const actual = s.confirmed > 0 ? s.totalHours / s.confirmed : null;
+        const drift = expected !== null && actual !== null ? actual - expected : null;
+        const slaPct = s.pushed ? Math.round((s.slaMet / s.pushed) * 100) : 0;
+        return { target, ...s, expected, actual, drift, slaPct };
+      })
+      .sort((a, b) => b.pushed - a.pushed);
+  }, [stats]);
 
   function exportCsv() {
     if (!detail.data || !stats) return;
@@ -114,6 +139,37 @@ function SLAReport() {
                   })}
                 </div>
               </div>
+              <div className="mt-6 rounded-sm border border-border bg-surface p-5">
+                <div className="flex items-baseline justify-between">
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Per-target SLA (30d)</div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Expected → actual · drift</div>
+                </div>
+                {targetStats.length === 0 ? (
+                  <div className="mt-3 text-xs text-muted-foreground">No push history yet.</div>
+                ) : (
+                  <table className="data-table mt-3">
+                    <thead><tr><th>Target</th><th>Pushes</th><th>Confirmed</th><th>Expected</th><th>Actual avg</th><th>Drift</th><th>SLA %</th></tr></thead>
+                    <tbody>
+                      {targetStats.map((t) => (
+                        <tr key={t.target}>
+                          <td className="font-mono text-xs uppercase">{t.target.replace(/_/g, " ")}</td>
+                          <td className="text-xs">{t.pushed}</td>
+                          <td className="text-xs text-muted-foreground">{t.confirmed}/{t.pushed}</td>
+                          <td className="font-mono text-xs text-muted-foreground">{t.expected !== null ? fmtHours(t.expected) : "—"}</td>
+                          <td className="font-mono text-xs">{t.actual !== null ? fmtHours(t.actual) : "—"}</td>
+                          <td className={`font-mono text-xs ${t.drift === null ? "text-muted-foreground" : t.drift > 6 ? "text-verdict-wrong" : t.drift > 1 ? "text-verdict-stale" : "text-verdict-accurate"}`}>
+                            {t.drift === null ? "—" : `${t.drift >= 0 ? "+" : ""}${fmtHours(t.drift)}`}
+                          </td>
+                          <td className={`text-xs ${t.slaPct >= 90 ? "text-verdict-accurate" : t.slaPct >= 70 ? "text-verdict-stale" : "text-verdict-wrong"}`}>{t.slaPct}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+
+
 
               <div className="mt-6 rounded-sm border border-border bg-surface p-5">
                 <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Recent pushes</div>
@@ -150,4 +206,11 @@ function Stat({ label, value, tier }: { label: string; value: string; tier?: str
       <div className={`mt-1 font-display text-3xl ${tier ?? ""}`}>{value}</div>
     </div>
   );
+}
+
+function fmtHours(h: number): string {
+  const abs = Math.abs(h);
+  if (abs < 1) return `${Math.round(abs * 60)}m`;
+  if (abs < 24) return `${abs.toFixed(1)}h`;
+  return `${(abs / 24).toFixed(1)}d`;
 }
