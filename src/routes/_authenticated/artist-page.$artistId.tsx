@@ -6,8 +6,9 @@ import {
   saveArtistPage,
   setArtistPagePublished,
   syncArtistPageFromCanonical,
+  generateArtistPageWithAI,
 } from "@/lib/artist-page.functions";
-import { Loader2, ExternalLink, Plus, Trash2, Save, Eye, EyeOff, ArrowLeft, Copy, RefreshCw } from "lucide-react";
+import { Loader2, ExternalLink, Plus, Trash2, Save, Eye, EyeOff, ArrowLeft, Copy, RefreshCw, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -26,6 +27,7 @@ function EditPage() {
   const saveFn = useServerFn(saveArtistPage);
   const pubFn = useServerFn(setArtistPagePublished);
   const syncFn = useServerFn(syncArtistPageFromCanonical);
+  const aiFn = useServerFn(generateArtistPageWithAI);
   const qc = useQueryClient();
 
   const q = useQuery({
@@ -116,6 +118,31 @@ function EditPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const aiPopulate = useMutation({
+    mutationFn: () => aiFn({ data: { artistId } }),
+    onSuccess: (res) => {
+      if (res.headline) setHeadline(res.headline);
+      if (res.snapshotHeadline) setSnapshotHeadline(res.snapshotHeadline);
+      if (res.moreNote) setMoreNote(res.moreNote);
+      if (res.startHere?.length) {
+        setStartHere((prev) => {
+          const seen = new Set(prev.map((c) => c.title.trim().toLowerCase()));
+          const additions = res.startHere.filter((c) => !seen.has(c.title.trim().toLowerCase()));
+          return [...prev, ...additions];
+        });
+      }
+      if (res.faq?.length) {
+        setFaq((prev) => {
+          const seen = new Set(prev.map((f) => f.question.trim().toLowerCase()));
+          const additions = res.faq.filter((f) => !seen.has(f.question.trim().toLowerCase()));
+          return [...prev, ...additions];
+        });
+      }
+      toast.success("AI draft populated. Review and Save.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (q.isLoading || !q.data) {
     return <div className="p-8 text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>;
   }
@@ -146,6 +173,15 @@ function EditPage() {
                 </button>
               </>
             )}
+            <button
+              onClick={() => aiPopulate.mutate()}
+              disabled={aiPopulate.isPending}
+              title="Draft page copy from available artist data"
+              className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-sm hover:bg-surface-elevated disabled:opacity-50"
+            >
+              {aiPopulate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              Generate with AI
+            </button>
             <button
               onClick={() => togglePublish.mutate(!published)}
               disabled={togglePublish.isPending || (!published && !slug.trim())}
