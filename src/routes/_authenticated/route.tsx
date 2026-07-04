@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyOrg } from "@/lib/org.functions";
-import { LayoutGrid, History, FileBarChart, Settings, LogOut } from "lucide-react";
+import { getMyPlatformStatus } from "@/lib/admin.functions";
+import { LayoutGrid, History, FileBarChart, Settings, LogOut, Shield } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
