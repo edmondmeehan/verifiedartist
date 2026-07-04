@@ -50,6 +50,9 @@ function AuthedShell() {
           <NavItem to="/audits" icon={History} label="Audit history" />
           <NavItem to="/sla" icon={FileBarChart} label="SLA report" />
           <NavItem to="/settings" icon={Settings} label="Settings" />
+          {(platformQuery.data?.isStaff || platformQuery.data?.needsBootstrap) && (
+            <NavItem to="/admin" icon={Shield} label="Admin" />
+          )}
         </nav>
 
         <div className="border-t border-border p-3">
