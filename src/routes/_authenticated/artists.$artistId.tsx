@@ -4,10 +4,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { getArtistDetail, saveCanonicalRecord, refreshArtistFromSpotify } from "@/lib/artists.functions";
 import { runFullAudit, scoreManualAnswer, addAuditQuery, logDistribution } from "@/lib/audits.functions";
 import { fanOutCanonical, confirmDistribution } from "@/lib/distribution.functions";
+import { fetchTourDatesWithAI } from "@/lib/artist-page.functions";
 import { LastSyncedBadge } from "@/components/LastSyncedBadge";
 import { VerdictBadge } from "@/components/verdict-badge";
 import { AGENT_LABELS, AGENTS, scoreFromRuns, scoreTier, type Agent, type Verdict } from "@/lib/verdict";
-import { ArrowLeft, Loader2, Play, Plus, RefreshCw, Save, Trash2, Zap, ChevronDown, ChevronRight, Globe } from "lucide-react";
+import { ArrowLeft, Loader2, Play, Plus, RefreshCw, Save, Trash2, Zap, ChevronDown, ChevronRight, Globe, Sparkles } from "lucide-react";
+
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
@@ -394,6 +396,7 @@ function CanonicalEditor({ artistId, canonical }: { artistId: string; canonical:
   const qc = useQueryClient();
   const saveFn = useServerFn(saveCanonicalRecord);
   const fanFn = useServerFn(fanOutCanonical);
+  const tourFn = useServerFn(fetchTourDatesWithAI);
   const m = useMutation({
     mutationFn: async () => {
       await saveFn({ data: { artistId, data: data as unknown as Record<string, unknown> } });
@@ -406,7 +409,31 @@ function CanonicalEditor({ artistId, canonical }: { artistId: string; canonical:
     },
     onError: (e: Error) => toast.error(e.message),
   });
+  const fetchTour = useMutation({
+    mutationFn: () => tourFn({ data: { artistId } }),
+    onSuccess: (res) => {
+      if (!res.dates?.length) { toast.info("No verified tour dates found right now."); return; }
+      const key = (d: { date: string; venue: string }) => `${d.date.trim().toLowerCase()}|${d.venue.trim().toLowerCase()}`;
+      const existing = new Set(data.tour_dates.map((d) => key(d)));
+      const additions = res.dates
+        .filter((d: { date: string; venue: string }) => !existing.has(key(d)))
+        .map((d: { date: string; venue: string; city: string; country: string; ticketUrl: string; status: string }) => ({
+
+          date: d.date,
+          venue: d.venue,
+          city: d.city,
+          country: d.country,
+          ticket_url: d.ticketUrl,
+          status: d.status,
+        }));
+      if (!additions.length) { toast.info("All fetched dates already in the record."); return; }
+      update("tour_dates", [...data.tour_dates, ...additions]);
+      toast.success(`Added ${additions.length} tour date${additions.length === 1 ? "" : "s"}. Review and Save.`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   function update<K extends keyof CanonicalData>(k: K, v: CanonicalData[K]) { setData((d) => ({ ...d, [k]: v })); setDirty(true); }
+
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -424,11 +451,22 @@ function CanonicalEditor({ artistId, canonical }: { artistId: string; canonical:
         </Section>
 
         <Section title="Tour dates" action={
-          <button onClick={() => update("tour_dates", [...data.tour_dates, { date: "", venue: "", city: "", country: "", ticket_url: "", status: "on_sale" }])}
-            className="inline-flex items-center gap-1 rounded-sm border border-border px-2.5 py-1 text-xs hover:bg-surface-elevated">
-            <Plus className="h-3 w-3" /> Add date
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fetchTour.mutate()}
+              disabled={fetchTour.isPending}
+              className="inline-flex items-center gap-1 rounded-sm border border-border px-2.5 py-1 text-xs hover:bg-surface-elevated disabled:opacity-50"
+            >
+              {fetchTour.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              Fetch with AI
+            </button>
+            <button onClick={() => update("tour_dates", [...data.tour_dates, { date: "", venue: "", city: "", country: "", ticket_url: "", status: "on_sale" }])}
+              className="inline-flex items-center gap-1 rounded-sm border border-border px-2.5 py-1 text-xs hover:bg-surface-elevated">
+              <Plus className="h-3 w-3" /> Add date
+            </button>
+          </div>
         }>
+
           {data.tour_dates.length === 0 ? (
             <div className="rounded-sm border border-dashed border-border p-6 text-center text-xs text-muted-foreground">No tour dates yet.</div>
           ) : (
