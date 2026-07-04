@@ -173,6 +173,52 @@ export const deleteUser = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const createUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        email: z.string().email(),
+        password: z.string().min(8).max(72).optional().or(z.literal("")),
+        autoConfirm: z.boolean().optional(),
+        platformRole: z.enum(["super_admin", "staff"]).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const password = data.password && data.password.length > 0 ? data.password : undefined;
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      email: data.email,
+      password,
+      email_confirm: data.autoConfirm ?? true,
+    });
+    if (error) throw new Error(error.message);
+    const newUserId = created.user?.id;
+    if (!newUserId) throw new Error("User creation failed");
+
+    if (data.platformRole) {
+      const { error: roleErr } = await supabaseAdmin
+        .from("platform_user_roles")
+        .insert({ user_id: newUserId, role: data.platformRole });
+      if (roleErr && !roleErr.message.includes("duplicate")) throw new Error(roleErr.message);
+    }
+
+    // If no password was set, generate an invite/recovery link so they can set one
+    let actionLink: string | null = null;
+    if (!password) {
+      const { data: link, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+        type: "invite",
+        email: data.email,
+      });
+      if (!linkErr) actionLink = link.properties?.action_link ?? null;
+    }
+
+    return { ok: true, userId: newUserId, actionLink };
+  });
+
 export const sendPasswordReset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ email: z.string().email() }).parse(d))
