@@ -4,10 +4,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { getArtistDetail, saveCanonicalRecord, refreshArtistFromSpotify } from "@/lib/artists.functions";
 import { runFullAudit, scoreManualAnswer, addAuditQuery, logDistribution } from "@/lib/audits.functions";
 import { fanOutCanonical, confirmDistribution } from "@/lib/distribution.functions";
+import { fetchTourDatesWithAI } from "@/lib/artist-page.functions";
 import { LastSyncedBadge } from "@/components/LastSyncedBadge";
 import { VerdictBadge } from "@/components/verdict-badge";
 import { AGENT_LABELS, AGENTS, scoreFromRuns, scoreTier, type Agent, type Verdict } from "@/lib/verdict";
-import { ArrowLeft, Loader2, Play, Plus, RefreshCw, Save, Trash2, Zap, ChevronDown, ChevronRight, Globe } from "lucide-react";
+import { ArrowLeft, Loader2, Play, Plus, RefreshCw, Save, Trash2, Zap, ChevronDown, ChevronRight, Globe, Sparkles } from "lucide-react";
+
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
