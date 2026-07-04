@@ -163,8 +163,9 @@ function EditPage() {
           const key = (d: DateRow) => `${d.date.trim().toLowerCase()}|${d.venue.trim().toLowerCase()}`;
           const seen = new Set(prev.map(key));
           const additions = res.dates
-            .map((d) => ({ date: d.date, venue: d.venue, city: d.city, type: d.type }))
-            .filter((d) => !seen.has(key(d)));
+            .map((d: { date: string; venue: string; city: string; type: string }) => ({ date: d.date, venue: d.venue, city: d.city, type: d.type }))
+            .filter((d: DateRow) => !seen.has(key(d)));
+
           return [...prev, ...additions];
         });
         toast.success(`Found ${res.dates.length} tour date${res.dates.length === 1 ? "" : "s"}. Review and Save.`);
