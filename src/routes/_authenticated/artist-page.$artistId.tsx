@@ -442,6 +442,7 @@ function EmbedSection({
   published: boolean;
 }) {
   const [tab, setTab] = useState<"badge" | "link" | "schema" | "email" | "footer">("footer");
+  const [showPreview, setShowPreview] = useState(false);
 
   const badgeSnippet = `<!-- ${artistName} · AI Answer Hub -->
 <a href="${publicUrl}" rel="me noopener"
@@ -532,19 +533,48 @@ Thanks!`;
           : "Publish the page first — these snippets link to the public URL."
       }
     >
-      <div className="mb-3 inline-flex rounded-sm border border-border bg-surface p-0.5 text-xs">
-        {(["footer", "badge", "link", "schema", "email"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-sm px-3 py-1.5 font-medium capitalize ${
-              tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t === "schema" ? "Head tags" : t === "email" ? "Email to send" : t}
-          </button>
-        ))}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="inline-flex rounded-sm border border-border bg-surface p-0.5 text-xs">
+          {(["footer", "badge", "link", "schema", "email"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`rounded-sm px-3 py-1.5 font-medium capitalize ${
+                tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t === "schema" ? "Head tags" : t === "email" ? "Email to send" : t}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setShowPreview((s) => !s)}
+          className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-surface px-2.5 py-1.5 text-xs font-medium hover:bg-surface-elevated"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          {showPreview ? "Hide preview" : "Live preview"}
+        </button>
       </div>
+
+      {showPreview && (
+        <div className="mb-4 overflow-hidden rounded-sm border border-border">
+          <div className="flex items-center gap-2 border-b border-border bg-surface px-3 py-1.5">
+            <div className="h-2 w-2 rounded-full bg-red-400" />
+            <div className="h-2 w-2 rounded-full bg-yellow-400" />
+            <div className="h-2 w-2 rounded-full bg-green-400" />
+            <span className="ml-2 text-[10px] text-muted-foreground">Simulated artist site footer</span>
+          </div>
+          <div className="min-h-[120px] bg-white">
+            {(tab === "footer" || tab === "badge") ? (
+              <div dangerouslySetInnerHTML={{ __html: tab === "footer" ? footerSnippet : badgeSnippet }} />
+            ) : (
+              <div className="flex h-[120px] items-center justify-center text-xs text-muted-foreground">
+                Preview is available for the Footer and Badge snippets.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="relative">
         <pre className="max-h-72 overflow-auto rounded-sm border border-border bg-background p-3 pr-24 font-mono text-xs leading-relaxed text-foreground whitespace-pre-wrap break-words">
