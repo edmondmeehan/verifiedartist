@@ -393,6 +393,8 @@ export const getPublicArtistPage = createServerFn({ method: "GET" })
       officialChannels: (page.official_channels ?? []) as any[],
       faq: (page.faq ?? []) as any[],
       updatedAt: page.updated_at,
+      footerBadgeText: page.footer_badge_text ?? "Verified info",
+      footerCaption: page.footer_caption ?? "ChatGPT, Claude, Perplexity and Gemini pull answers from this page.",
       artist: {
         name: artist?.name ?? "Artist",
         imageUrl: artist?.image_url ?? null,
