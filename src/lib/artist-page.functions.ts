@@ -367,7 +367,7 @@ export const getPublicArtistPage = createServerFn({ method: "GET" })
     const { data: page, error } = await supabase
       .from("artist_public_pages")
       .select(
-        "slug, headline, intro_stats, start_here, live_snapshot, official_channels, faq, updated_at, artist_id",
+        "slug, headline, intro_stats, start_here, live_snapshot, official_channels, faq, updated_at, artist_id, footer_badge_text, footer_caption",
       )
       .eq("slug", data.slug)
       .eq("published", true)
