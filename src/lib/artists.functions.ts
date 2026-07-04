@@ -40,7 +40,7 @@ export const listArtists = createServerFn({ method: "GET" })
 
     const { data: artists, error } = await supabase
       .from("artists")
-      .select("id, name, org_id, status, updated_at, official_site_url, spotify_id, spotify_synced_at")
+      .select("id, name, org_id, status, updated_at, official_site_url, spotify_id, spotify_synced_at, image_url")
       .in("org_id", orgIds)
       .order("name");
 
