@@ -7,7 +7,7 @@ import { fanOutCanonical, confirmDistribution } from "@/lib/distribution.functio
 import { LastSyncedBadge } from "@/components/LastSyncedBadge";
 import { VerdictBadge } from "@/components/verdict-badge";
 import { AGENT_LABELS, AGENTS, scoreFromRuns, scoreTier, type Agent, type Verdict } from "@/lib/verdict";
-import { ArrowLeft, Loader2, Play, Plus, RefreshCw, Save, Trash2, Zap, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, Loader2, Play, Plus, RefreshCw, Save, Trash2, Zap, ChevronDown, ChevronRight, Globe } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
@@ -69,6 +69,15 @@ function ArtistDetail() {
                 {artist.official_site_url}
               </a>
             )}
+            <div className="mt-2">
+              <Link
+                to="/artist-page/$artistId"
+                params={{ artistId: artist.id }}
+                className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-surface px-2 py-1 text-xs text-muted-foreground hover:bg-surface-elevated hover:text-foreground"
+              >
+                <Globe className="h-3 w-3" /> Public page
+              </Link>
+            </div>
           </div>
         </div>
         <div className="flex items-end gap-6">

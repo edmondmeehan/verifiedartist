@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      artist_public_pages: {
+        Row: {
+          artist_id: string
+          created_at: string
+          faq: Json
+          headline: string | null
+          id: string
+          intro_stats: Json
+          live_snapshot: Json
+          official_channels: Json
+          published: boolean
+          slug: string
+          start_here: Json
+          updated_at: string
+        }
+        Insert: {
+          artist_id: string
+          created_at?: string
+          faq?: Json
+          headline?: string | null
+          id?: string
+          intro_stats?: Json
+          live_snapshot?: Json
+          official_channels?: Json
+          published?: boolean
+          slug: string
+          start_here?: Json
+          updated_at?: string
+        }
+        Update: {
+          artist_id?: string
+          created_at?: string
+          faq?: Json
+          headline?: string | null
+          id?: string
+          intro_stats?: Json
+          live_snapshot?: Json
+          official_channels?: Json
+          published?: boolean
+          slug?: string
+          start_here?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artist_public_pages_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: true
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       artists: {
         Row: {
           bandsintown_id: string | null

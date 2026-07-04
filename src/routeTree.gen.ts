@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ArtistSlugRouteImport } from './routes/artist.$slug'
 import { Route as AuthenticatedSlaRouteImport } from './routes/_authenticated/sla'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
@@ -19,6 +20,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAuditsRouteImport } from './routes/_authenticated/audits'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedArtistsArtistIdRouteImport } from './routes/_authenticated/artists.$artistId'
+import { Route as AuthenticatedArtistPageArtistIdRouteImport } from './routes/_authenticated/artist-page.$artistId'
 import { Route as ApiPublicHooksConfirmPropagationRouteImport } from './routes/api/public/hooks/confirm-propagation'
 
 const AuthRoute = AuthRouteImport.update({
@@ -33,6 +35,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtistSlugRoute = ArtistSlugRouteImport.update({
+  id: '/artist/$slug',
+  path: '/artist/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSlaRoute = AuthenticatedSlaRouteImport.update({
@@ -71,6 +78,12 @@ const AuthenticatedArtistsArtistIdRoute =
     path: '/artists/$artistId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedArtistPageArtistIdRoute =
+  AuthenticatedArtistPageArtistIdRouteImport.update({
+    id: '/artist-page/$artistId',
+    path: '/artist-page/$artistId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiPublicHooksConfirmPropagationRoute =
   ApiPublicHooksConfirmPropagationRouteImport.update({
     id: '/api/public/hooks/confirm-propagation',
@@ -87,6 +100,8 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/sla': typeof AuthenticatedSlaRoute
+  '/artist/$slug': typeof ArtistSlugRoute
+  '/artist-page/$artistId': typeof AuthenticatedArtistPageArtistIdRoute
   '/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
   '/api/public/hooks/confirm-propagation': typeof ApiPublicHooksConfirmPropagationRoute
 }
@@ -99,6 +114,8 @@ export interface FileRoutesByTo {
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/sla': typeof AuthenticatedSlaRoute
+  '/artist/$slug': typeof ArtistSlugRoute
+  '/artist-page/$artistId': typeof AuthenticatedArtistPageArtistIdRoute
   '/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
   '/api/public/hooks/confirm-propagation': typeof ApiPublicHooksConfirmPropagationRoute
 }
@@ -113,6 +130,8 @@ export interface FileRoutesById {
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/sla': typeof AuthenticatedSlaRoute
+  '/artist/$slug': typeof ArtistSlugRoute
+  '/_authenticated/artist-page/$artistId': typeof AuthenticatedArtistPageArtistIdRoute
   '/_authenticated/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
   '/api/public/hooks/confirm-propagation': typeof ApiPublicHooksConfirmPropagationRoute
 }
@@ -127,6 +146,8 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/sla'
+    | '/artist/$slug'
+    | '/artist-page/$artistId'
     | '/artists/$artistId'
     | '/api/public/hooks/confirm-propagation'
   fileRoutesByTo: FileRoutesByTo
@@ -139,6 +160,8 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/sla'
+    | '/artist/$slug'
+    | '/artist-page/$artistId'
     | '/artists/$artistId'
     | '/api/public/hooks/confirm-propagation'
   id:
@@ -152,6 +175,8 @@ export interface FileRouteTypes {
     | '/_authenticated/reports'
     | '/_authenticated/settings'
     | '/_authenticated/sla'
+    | '/artist/$slug'
+    | '/_authenticated/artist-page/$artistId'
     | '/_authenticated/artists/$artistId'
     | '/api/public/hooks/confirm-propagation'
   fileRoutesById: FileRoutesById
@@ -160,6 +185,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ArtistSlugRoute: typeof ArtistSlugRoute
   ApiPublicHooksConfirmPropagationRoute: typeof ApiPublicHooksConfirmPropagationRoute
 }
 
@@ -184,6 +210,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artist/$slug': {
+      id: '/artist/$slug'
+      path: '/artist/$slug'
+      fullPath: '/artist/$slug'
+      preLoaderRoute: typeof ArtistSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/sla': {
@@ -235,6 +268,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedArtistsArtistIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/artist-page/$artistId': {
+      id: '/_authenticated/artist-page/$artistId'
+      path: '/artist-page/$artistId'
+      fullPath: '/artist-page/$artistId'
+      preLoaderRoute: typeof AuthenticatedArtistPageArtistIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/hooks/confirm-propagation': {
       id: '/api/public/hooks/confirm-propagation'
       path: '/api/public/hooks/confirm-propagation'
@@ -252,6 +292,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSlaRoute: typeof AuthenticatedSlaRoute
+  AuthenticatedArtistPageArtistIdRoute: typeof AuthenticatedArtistPageArtistIdRoute
   AuthenticatedArtistsArtistIdRoute: typeof AuthenticatedArtistsArtistIdRoute
 }
 
@@ -262,6 +303,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSlaRoute: AuthenticatedSlaRoute,
+  AuthenticatedArtistPageArtistIdRoute: AuthenticatedArtistPageArtistIdRoute,
   AuthenticatedArtistsArtistIdRoute: AuthenticatedArtistsArtistIdRoute,
 }
 
@@ -272,6 +314,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ArtistSlugRoute: ArtistSlugRoute,
   ApiPublicHooksConfirmPropagationRoute: ApiPublicHooksConfirmPropagationRoute,
 }
 export const routeTree = rootRouteImport

@@ -1,0 +1,243 @@
+import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { z } from "zod";
+
+// ---- Schemas ---------------------------------------------------------------
+
+const startHereCardSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(600).optional().default(""),
+  url: z.string().trim().url().max(500).optional().or(z.literal("")),
+});
+
+const dateRowSchema = z.object({
+  date: z.string().trim().min(1).max(60),
+  venue: z.string().trim().max(200).optional().default(""),
+  city: z.string().trim().max(200).optional().default(""),
+  type: z.string().trim().max(60).optional().default(""),
+});
+
+const channelRowSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  url: z.string().trim().url().max(500),
+  description: z.string().trim().max(300).optional().default(""),
+});
+
+const faqRowSchema = z.object({
+  question: z.string().trim().min(1).max(300),
+  answer: z.string().trim().min(1).max(3000),
+});
+
+const introStatsSchema = z.object({
+  verifiedQuestions: z.number().int().min(0).max(9999).optional(),
+  updatedLabel: z.string().trim().max(60).optional(),
+});
+
+const liveSnapshotSchema = z.object({
+  headline: z.string().trim().max(600).optional().default(""),
+  dates: z.array(dateRowSchema).max(200).default([]),
+  moreNote: z.string().trim().max(300).optional().default(""),
+});
+
+const pageContentSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(2)
+    .max(80)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase, alphanumeric, dashes only"),
+  headline: z.string().trim().max(1000).optional().default(""),
+  intro_stats: introStatsSchema.default({}),
+  start_here: z.array(startHereCardSchema).max(24).default([]),
+  live_snapshot: liveSnapshotSchema.default({ dates: [] }),
+  official_channels: z.array(channelRowSchema).max(20).default([]),
+  faq: z.array(faqRowSchema).max(50).default([]),
+});
+
+// ---- Helpers ---------------------------------------------------------------
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "artist";
+}
+
+async function assertArtistMember(supabase: any, userId: string, artistId: string) {
+  const { data: artist, error } = await supabase
+    .from("artists")
+    .select("id, org_id, name")
+    .eq("id", artistId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!artist) throw new Error("Artist not found");
+  const { data: member } = await supabase
+    .from("organization_members")
+    .select("role")
+    .eq("org_id", artist.org_id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!member) throw new Error("Not a member of this organization");
+  return artist;
+}
+
+// ---- Server fns ------------------------------------------------------------
+
+// Load-or-create draft for a member editor
+export const getMyArtistPage = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ artistId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const artist = await assertArtistMember(supabase, userId, data.artistId);
+
+    const { data: existing } = await supabase
+      .from("artist_public_pages")
+      .select("*")
+      .eq("artist_id", artist.id)
+      .maybeSingle();
+
+    if (existing) return { page: existing, artist: { id: artist.id, name: artist.name } };
+
+    // Ensure a unique slug
+    let base = slugify(artist.name);
+    let slug = base;
+    for (let i = 1; i < 20; i++) {
+      const { data: taken } = await supabase
+        .from("artist_public_pages")
+        .select("id")
+        .eq("slug", slug)
+        .maybeSingle();
+      if (!taken) break;
+      slug = `${base}-${i + 1}`;
+    }
+
+    const defaultPage = {
+      artist_id: artist.id,
+      slug,
+      published: false,
+      headline: "",
+      intro_stats: {},
+      start_here: [],
+      live_snapshot: { headline: "", dates: [], moreNote: "" },
+      official_channels: [],
+      faq: [],
+    };
+    const { data: created, error } = await supabase
+      .from("artist_public_pages")
+      .insert(defaultPage)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return { page: created, artist: { id: artist.id, name: artist.name } };
+  });
+
+export const saveArtistPage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ artistId: z.string().uuid(), content: pageContentSchema }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const artist = await assertArtistMember(supabase, userId, data.artistId);
+
+    // Check slug not taken by another artist
+    const { data: slugRow } = await supabase
+      .from("artist_public_pages")
+      .select("artist_id")
+      .eq("slug", data.content.slug)
+      .maybeSingle();
+    if (slugRow && slugRow.artist_id !== artist.id) {
+      throw new Error("That slug is already in use by another artist");
+    }
+
+    const patch = {
+      slug: data.content.slug,
+      headline: data.content.headline,
+      intro_stats: data.content.intro_stats,
+      start_here: data.content.start_here,
+      live_snapshot: data.content.live_snapshot,
+      official_channels: data.content.official_channels,
+      faq: data.content.faq,
+    };
+    const { data: updated, error } = await supabase
+      .from("artist_public_pages")
+      .update(patch)
+      .eq("artist_id", artist.id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return { page: updated };
+  });
+
+export const setArtistPagePublished = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ artistId: z.string().uuid(), published: z.boolean() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const artist = await assertArtistMember(supabase, userId, data.artistId);
+    const { data: updated, error } = await supabase
+      .from("artist_public_pages")
+      .update({ published: data.published })
+      .eq("artist_id", artist.id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return { page: updated };
+  });
+
+// ---- Public read (no auth) -------------------------------------------------
+
+export const getPublicArtistPage = createServerFn({ method: "GET" })
+  .inputValidator((d: unknown) =>
+    z.object({ slug: z.string().trim().min(2).max(80).regex(/^[a-z0-9-]+$/) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_PUBLISHABLE_KEY!,
+      { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
+    );
+
+    const { data: page, error } = await supabase
+      .from("artist_public_pages")
+      .select(
+        "slug, headline, intro_stats, start_here, live_snapshot, official_channels, faq, updated_at, artist_id",
+      )
+      .eq("slug", data.slug)
+      .eq("published", true)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!page) return null;
+
+    // Artist name/image lives on a table without anon read access; use admin
+    // for this single narrow projection after confirming the page is published.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: artist } = await supabaseAdmin
+      .from("artists")
+      .select("name, image_url, official_site_url")
+      .eq("id", page.artist_id)
+      .maybeSingle();
+
+    return {
+      slug: page.slug,
+      headline: page.headline ?? "",
+      introStats: page.intro_stats ?? {},
+      startHere: (page.start_here ?? []) as any[],
+      liveSnapshot: (page.live_snapshot ?? {}) as any,
+      officialChannels: (page.official_channels ?? []) as any[],
+      faq: (page.faq ?? []) as any[],
+      updatedAt: page.updated_at,
+      artist: {
+        name: artist?.name ?? "Artist",
+        imageUrl: artist?.image_url ?? null,
+        officialSiteUrl: artist?.official_site_url ?? null,
+      },
+    };
+  });
