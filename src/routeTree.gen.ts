@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSlaRouteImport } from './routes/_authenticated/sla'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAuditsRouteImport } from './routes/_authenticated/audits'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -42,6 +43,11 @@ const AuthenticatedSlaRoute = AuthenticatedSlaRouteImport.update({
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRoute
   '/audits': typeof AuthenticatedAuditsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/sla': typeof AuthenticatedSlaRoute
   '/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRoute
   '/audits': typeof AuthenticatedAuditsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/sla': typeof AuthenticatedSlaRoute
   '/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/audits': typeof AuthenticatedAuditsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/sla': typeof AuthenticatedSlaRoute
   '/_authenticated/artists/$artistId': typeof AuthenticatedArtistsArtistIdRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/audits'
     | '/dashboard'
+    | '/reports'
     | '/settings'
     | '/sla'
     | '/artists/$artistId'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/audits'
     | '/dashboard'
+    | '/reports'
     | '/settings'
     | '/sla'
     | '/artists/$artistId'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/audits'
     | '/_authenticated/dashboard'
+    | '/_authenticated/reports'
     | '/_authenticated/settings'
     | '/_authenticated/sla'
     | '/_authenticated/artists/$artistId'
@@ -188,6 +200,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reports': {
+      id: '/_authenticated/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthenticatedReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -230,6 +249,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedAuditsRoute: typeof AuthenticatedAuditsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSlaRoute: typeof AuthenticatedSlaRoute
   AuthenticatedArtistsArtistIdRoute: typeof AuthenticatedArtistsArtistIdRoute
@@ -239,6 +259,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedAuditsRoute: AuthenticatedAuditsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSlaRoute: AuthenticatedSlaRoute,
   AuthenticatedArtistsArtistIdRoute: AuthenticatedArtistsArtistIdRoute,
