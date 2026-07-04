@@ -335,15 +335,44 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["platform_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["platform_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["platform_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      has_platform_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["platform_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_org_member: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      is_platform_staff: { Args: { _user_id: string }; Returns: boolean }
       org_role_of: {
         Args: { _org_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["org_role"]
@@ -366,6 +395,7 @@ export type Database = {
         | "x"
       org_role: "owner" | "admin" | "member"
       plan_type: "per_artist" | "enterprise"
+      platform_role: "super_admin" | "staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -510,6 +540,7 @@ export const Constants = {
       ],
       org_role: ["owner", "admin", "member"],
       plan_type: ["per_artist", "enterprise"],
+      platform_role: ["super_admin", "staff"],
     },
   },
 } as const
