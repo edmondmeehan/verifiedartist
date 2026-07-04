@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { listArtists, getArtistDetail } from "@/lib/artists.functions";
 import { TARGET_DELAY_HOURS } from "@/lib/distribution.functions";
 import { scoreFromRuns, scoreTier, VERDICT_META, type Verdict } from "@/lib/verdict";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { format, subDays, startOfDay, endOfDay, isAfter, isBefore } from "date-fns";
 import { Download, CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -56,6 +56,7 @@ function SLAReport() {
   const listFn = useServerFn(listArtists);
   const artistsQuery = useQuery({ queryKey: ["artists"], queryFn: () => listFn() });
   const [selected, setSelected] = useState<string | null>(null);
+  const [expandedTarget, setExpandedTarget] = useState<string | null>(null);
   const activeId = selected ?? artistsQuery.data?.[0]?.id ?? null;
   const detailFn = useServerFn(getArtistDetail);
   const detail = useQuery({
@@ -199,7 +200,7 @@ function SLAReport() {
               <div className="mt-6 rounded-sm border border-border bg-surface p-5">
                 <div className="flex items-baseline justify-between">
                   <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Per-target SLA</div>
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Expected → actual · drift</div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Click a row for push timeline</div>
                 </div>
                 {targetStats.length === 0 ? (
                   <div className="mt-3 text-xs text-muted-foreground">No push history in this period.</div>
@@ -217,25 +218,47 @@ function SLAReport() {
                       </tr>
                     </thead>
                     <tbody>
-                      {targetStats.map((t) => (
-                        <tr key={t.target}>
-                          <td className="font-mono text-xs uppercase">{t.target.replace(/_/g, " ")}</td>
-                          <td className="text-xs">{t.pushed}</td>
-                          <td className="text-xs text-muted-foreground">
-                            {t.confirmed}/{t.pushed}
-                          </td>
-                          <td className="font-mono text-xs text-muted-foreground">{t.expected !== null ? fmtHours(t.expected) : "—"}</td>
-                          <td className="font-mono text-xs">{t.actual !== null ? fmtHours(t.actual) : "—"}</td>
-                          <td
-                            className={`font-mono text-xs ${
-                              t.drift === null ? "text-muted-foreground" : t.drift > 6 ? "text-verdict-wrong" : t.drift > 1 ? "text-verdict-stale" : "text-verdict-accurate"
-                            }`}
-                          >
-                            {t.drift === null ? "—" : `${t.drift >= 0 ? "+" : ""}${fmtHours(t.drift)}`}
-                          </td>
-                          <td className={`text-xs ${t.slaPct >= 90 ? "text-verdict-accurate" : t.slaPct >= 70 ? "text-verdict-stale" : "text-verdict-wrong"}`}>{t.slaPct}%</td>
-                        </tr>
-                      ))}
+                      {targetStats.map((t) => {
+                        const isOpen = expandedTarget === t.target;
+                        return (
+                          <Fragment key={t.target}>
+                            <tr
+                              onClick={() => setExpandedTarget(isOpen ? null : t.target)}
+                              className={`cursor-pointer hover:bg-surface-elevated ${isOpen ? "bg-surface-elevated" : ""}`}
+                            >
+                              <td className="font-mono text-xs uppercase">
+                                <span className="mr-1 inline-block w-3 text-muted-foreground">{isOpen ? "▾" : "▸"}</span>
+                                {t.target.replace(/_/g, " ")}
+                              </td>
+                              <td className="text-xs">{t.pushed}</td>
+                              <td className="text-xs text-muted-foreground">
+                                {t.confirmed}/{t.pushed}
+                              </td>
+                              <td className="font-mono text-xs text-muted-foreground">{t.expected !== null ? fmtHours(t.expected) : "—"}</td>
+                              <td className="font-mono text-xs">{t.actual !== null ? fmtHours(t.actual) : "—"}</td>
+                              <td
+                                className={`font-mono text-xs ${
+                                  t.drift === null ? "text-muted-foreground" : t.drift > 6 ? "text-verdict-wrong" : t.drift > 1 ? "text-verdict-stale" : "text-verdict-accurate"
+                                }`}
+                              >
+                                {t.drift === null ? "—" : `${t.drift >= 0 ? "+" : ""}${fmtHours(t.drift)}`}
+                              </td>
+                              <td className={`text-xs ${t.slaPct >= 90 ? "text-verdict-accurate" : t.slaPct >= 70 ? "text-verdict-stale" : "text-verdict-wrong"}`}>{t.slaPct}%</td>
+                            </tr>
+                            {isOpen && (
+                              <tr>
+                                <td colSpan={7} className="bg-background p-0">
+                                  <TargetTimeline
+                                    target={t.target}
+                                    expected={t.expected}
+                                    logs={stats.logs.filter((l) => l.target === t.target)}
+                                  />
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
@@ -325,4 +348,81 @@ function fmtHours(h: number): string {
   if (abs < 1) return `${Math.round(abs * 60)}m`;
   if (abs < 24) return `${abs.toFixed(1)}h`;
   return `${(abs / 24).toFixed(1)}d`;
+}
+
+type TimelineLog = {
+  id: string;
+  target: string;
+  pushed_at: string;
+  propagation_confirmed_at: string | null;
+  sla_met: boolean | null;
+};
+
+function TargetTimeline({ target, expected, logs }: { target: string; expected: number | null; logs: TimelineLog[] }) {
+  const sorted = [...logs].sort((a, b) => new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime());
+  return (
+    <div className="border-t border-border px-5 py-4">
+      <div className="mb-3 flex items-baseline justify-between">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          {target.replace(/_/g, " ")} · push timeline
+        </div>
+        <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          Expected {expected !== null ? fmtHours(expected) : "—"} · SLA 48h
+        </div>
+      </div>
+      {sorted.length === 0 ? (
+        <div className="text-xs text-muted-foreground">No pushes.</div>
+      ) : (
+        <ol className="space-y-2">
+          {sorted.map((l) => {
+            const pushed = new Date(l.pushed_at);
+            const confirmed = l.propagation_confirmed_at ? new Date(l.propagation_confirmed_at) : null;
+            const elapsedH = confirmed ? (confirmed.getTime() - pushed.getTime()) / 3600_000 : null;
+            const drift = elapsedH !== null && expected !== null ? elapsedH - expected : null;
+            const verdict: "met" | "missed" | "pending" =
+              l.sla_met === true ? "met" : l.sla_met === false ? "missed" : "pending";
+            const verdictClass =
+              verdict === "met" ? "text-verdict-accurate" : verdict === "missed" ? "text-verdict-wrong" : "text-muted-foreground";
+            return (
+              <li key={l.id} className="grid grid-cols-12 items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2">
+                <div className="col-span-3 font-mono text-[11px] text-muted-foreground">
+                  <div>Pushed</div>
+                  <div className="text-foreground">{format(pushed, "MMM d, HH:mm")}</div>
+                </div>
+                <div className="col-span-3 font-mono text-[11px] text-muted-foreground">
+                  <div>Confirmed</div>
+                  <div className={confirmed ? "text-foreground" : ""}>
+                    {confirmed ? format(confirmed, "MMM d, HH:mm") : "— pending —"}
+                  </div>
+                </div>
+                <div className="col-span-2 font-mono text-[11px] text-muted-foreground">
+                  <div>Elapsed</div>
+                  <div className="text-foreground">{elapsedH !== null ? fmtHours(elapsedH) : "—"}</div>
+                </div>
+                <div className="col-span-2 font-mono text-[11px] text-muted-foreground">
+                  <div>Drift</div>
+                  <div
+                    className={
+                      drift === null
+                        ? ""
+                        : drift > 6
+                          ? "text-verdict-wrong"
+                          : drift > 1
+                            ? "text-verdict-stale"
+                            : "text-verdict-accurate"
+                    }
+                  >
+                    {drift === null ? "—" : `${drift >= 0 ? "+" : ""}${fmtHours(drift)}`}
+                  </div>
+                </div>
+                <div className={`col-span-2 text-right font-mono text-[11px] uppercase tracking-widest ${verdictClass}`}>
+                  {verdict}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </div>
+  );
 }
