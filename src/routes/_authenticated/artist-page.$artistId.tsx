@@ -533,7 +533,7 @@ Thanks!`;
       }
     >
       <div className="mb-3 inline-flex rounded-sm border border-border bg-surface p-0.5 text-xs">
-        {(["badge", "link", "schema", "email"] as const).map((t) => (
+        {(["footer", "badge", "link", "schema", "email"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -559,6 +559,7 @@ Thanks!`;
       </div>
 
       <p className="mt-2 text-xs text-muted-foreground">
+        {tab === "footer" && "One complete HTML footer block — paste it directly into the artist's site footer."}
         {tab === "badge" && "A small badge with an accent tag — drops into any footer or sidebar."}
         {tab === "link" && "One plain text link — safe for any CMS or email signature."}
         {tab === "schema" && "Adds a schema.org sameAs link so AI systems tie the official site and this hub together."}
