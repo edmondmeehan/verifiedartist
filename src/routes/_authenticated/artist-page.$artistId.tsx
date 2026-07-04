@@ -321,17 +321,19 @@ function EditPage() {
           <ListEditor
             items={dates}
             setItems={setDates}
-            empty={{ date: "", venue: "", city: "", type: "" }}
+            empty={{ date: "", venue: "", city: "", type: "", ticketUrl: "" }}
             render={(d, upd) => (
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
                 <LabelledInput label="Date" value={d.date} onChange={(v) => upd({ ...d, date: v })} placeholder="July 10, 2026" />
                 <LabelledInput label="Venue" value={d.venue} onChange={(v) => upd({ ...d, venue: v })} placeholder="Fox Theatre" />
                 <LabelledInput label="City" value={d.city} onChange={(v) => upd({ ...d, city: v })} placeholder="Atlanta, GA" />
                 <LabelledInput label="Type" value={d.type} onChange={(v) => upd({ ...d, type: v })} placeholder="Theater" />
+                <LabelledInput label="Tickets URL" value={d.ticketUrl} onChange={(v) => upd({ ...d, ticketUrl: v })} placeholder="https://ticketmaster.com/…" />
               </div>
             )}
             addLabel="Add date"
           />
+
         </div>
         <div className="mt-4">
           <LabelledInput label="Note under the table" value={moreNote} onChange={setMoreNote} placeholder="26 more verified dates on the Tickets page." />
