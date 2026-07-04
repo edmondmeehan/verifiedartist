@@ -62,7 +62,7 @@ function EditPage() {
     setUpdatedLabel(p.intro_stats?.updatedLabel ?? "");
     setStartHere((p.start_here ?? []).map((c: any) => ({ title: c.title ?? "", description: c.description ?? "", url: c.url ?? "" })));
     setSnapshotHeadline(p.live_snapshot?.headline ?? "");
-    setDates((p.live_snapshot?.dates ?? []).map((d: any) => ({ date: d.date ?? "", venue: d.venue ?? "", city: d.city ?? "", type: d.type ?? "" })));
+    setDates((p.live_snapshot?.dates ?? []).map((d: any) => ({ date: d.date ?? "", venue: d.venue ?? "", city: d.city ?? "", type: d.type ?? "", ticketUrl: d.ticketUrl ?? "" })));
     setMoreNote(p.live_snapshot?.moreNote ?? "");
     setChannels((p.official_channels ?? []).map((c: any) => ({ name: c.name ?? "", url: c.url ?? "", description: c.description ?? "" })));
     setFaq((p.faq ?? []).map((f: any) => ({ question: f.question ?? "", answer: f.answer ?? "" })));
