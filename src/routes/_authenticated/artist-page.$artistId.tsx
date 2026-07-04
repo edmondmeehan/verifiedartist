@@ -25,6 +25,7 @@ function EditPage() {
   const fn = useServerFn(getMyArtistPage);
   const saveFn = useServerFn(saveArtistPage);
   const pubFn = useServerFn(setArtistPagePublished);
+  const syncFn = useServerFn(syncArtistPageFromCanonical);
   const qc = useQueryClient();
 
   const q = useQuery({
