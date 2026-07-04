@@ -60,6 +60,12 @@ const pageContentSchema = z.object({
   footer_caption: z.string().trim().max(300).optional().default("ChatGPT, Claude, Perplexity and Gemini pull answers from this page."),
 });
 
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 // ---- Helpers ---------------------------------------------------------------
 
 function slugify(name: string): string {
