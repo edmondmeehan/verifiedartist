@@ -133,38 +133,156 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   );
 }
 
+type SpotifyPick = {
+  id: string;
+  name: string;
+  image: string | null;
+  genres: string[];
+  followers: number;
+  popularity: number;
+  spotify_url: string;
+};
+
 function NewArtistDialog({ orgId, onClose, onCreated }: { orgId: string; onClose: () => void; onCreated: () => void }) {
+  const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [picked, setPicked] = useState<SpotifyPick | null>(null);
+  const [manual, setManual] = useState(false);
   const [name, setName] = useState("");
   const [site, setSite] = useState("");
   const [spotify, setSpotify] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 250);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const searchFn = useServerFn(searchSpotifyArtists);
+  const searchQuery = useQuery({
+    queryKey: ["spotify-search", debounced],
+    queryFn: () => searchFn({ data: { query: debounced } }),
+    enabled: !manual && debounced.length >= 2 && !picked,
+    staleTime: 60_000,
+  });
+
   const createFn = useServerFn(createArtist);
   const mutation = useMutation({
-    mutationFn: () => createFn({ data: { orgId, name, official_site_url: site, spotify_id: spotify } }),
-    onSuccess: () => { toast.success(`${name} added to roster`); onCreated(); },
+    mutationFn: () => {
+      const payload = picked
+        ? { orgId, name: picked.name, official_site_url: site, spotify_id: picked.id }
+        : { orgId, name, official_site_url: site, spotify_id: spotify };
+      return createFn({ data: payload });
+    },
+    onSuccess: () => { toast.success(`${picked?.name || name} added to roster`); onCreated(); },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const canSubmit = !mutation.isPending && (picked ? true : name.trim().length > 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-sm border border-border bg-surface p-6">
         <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">New artist</div>
         <h2 className="mt-1 font-display text-2xl">Add to roster</h2>
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }} className="mt-5 space-y-3">
-          <Field label="Name" required>
-            <input required autoFocus value={name} onChange={(e) => setName(e.target.value)}
-              placeholder="Matchbox Twenty" className="input" />
-          </Field>
+
+        <form onSubmit={(e) => { e.preventDefault(); if (canSubmit) mutation.mutate(); }} className="mt-5 space-y-3">
+          {!manual && (
+            <>
+              {picked ? (
+                <div className="flex items-center gap-3 rounded-sm border border-border bg-surface-elevated p-3">
+                  {picked.image ? (
+                    <img src={picked.image} alt="" className="h-12 w-12 rounded-sm object-cover" />
+                  ) : (
+                    <div className="h-12 w-12 rounded-sm bg-background" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">{picked.name}</div>
+                    <div className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                      {picked.genres.slice(0, 2).join(" · ") || "no genres"} · {picked.followers.toLocaleString()} followers
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => { setPicked(null); setQuery(""); }} className="rounded-sm border border-border px-2 py-1 text-xs hover:bg-surface">
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <Field label="Search Spotify">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      autoFocus
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Matchbox Twenty"
+                      className="input"
+                      style={{ paddingLeft: "2rem" }}
+                    />
+                  </div>
+                  {debounced.length >= 2 && (
+                    <div className="mt-2 max-h-64 overflow-auto rounded-sm border border-border bg-background">
+                      {searchQuery.isFetching ? (
+                        <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching Spotify…
+                        </div>
+                      ) : (searchQuery.data ?? []).length === 0 ? (
+                        <div className="p-3 text-xs text-muted-foreground">No matches.</div>
+                      ) : (
+                        (searchQuery.data ?? []).map((r) => (
+                          <button
+                            type="button"
+                            key={r.id}
+                            onClick={() => setPicked(r)}
+                            className="flex w-full items-center gap-3 border-b border-border p-2 text-left last:border-b-0 hover:bg-surface-elevated"
+                          >
+                            {r.image ? (
+                              <img src={r.image} alt="" className="h-10 w-10 rounded-sm object-cover" />
+                            ) : (
+                              <div className="h-10 w-10 rounded-sm bg-surface" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm">{r.name}</div>
+                              <div className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                                {r.genres.slice(0, 2).join(" · ") || "—"} · {r.followers.toLocaleString()}
+                              </div>
+                            </div>
+                            <Check className="h-4 w-4 opacity-0" />
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                  <button type="button" onClick={() => setManual(true)} className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground">
+                    Can't find them? Enter manually →
+                  </button>
+                </Field>
+              )}
+            </>
+          )}
+
+          {manual && (
+            <>
+              <Field label="Name" required>
+                <input required autoFocus value={name} onChange={(e) => setName(e.target.value)}
+                  placeholder="Matchbox Twenty" className="input" />
+              </Field>
+              <Field label="Spotify artist ID">
+                <input value={spotify} onChange={(e) => setSpotify(e.target.value)}
+                  placeholder="0PFtn5NtBbbUNbU9EAmIWF" className="input" />
+              </Field>
+              <button type="button" onClick={() => { setManual(false); setName(""); setSpotify(""); }} className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground">
+                ← Back to Spotify search
+              </button>
+            </>
+          )}
+
           <Field label="Official site URL">
             <input value={site} onChange={(e) => setSite(e.target.value)} type="url"
               placeholder="https://matchboxtwenty.com" className="input" />
           </Field>
-          <Field label="Spotify artist ID">
-            <input value={spotify} onChange={(e) => setSpotify(e.target.value)}
-              placeholder="0PFtn5NtBbbUNbU9EAmIWF" className="input" />
-          </Field>
+
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="rounded-sm border border-border px-4 py-2 text-sm hover:bg-surface-elevated">Cancel</button>
-            <button type="submit" disabled={mutation.isPending || !name} className="inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50">
+            <button type="submit" disabled={!canSubmit} className="inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50">
               {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Add artist
             </button>
           </div>
