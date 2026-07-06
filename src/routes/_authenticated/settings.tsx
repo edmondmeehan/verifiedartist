@@ -13,10 +13,13 @@ import {
   listConnections,
   upsertConnection,
   deleteConnection,
+  syncConnection,
 } from "@/lib/connections.functions";
 import { useEffect, useState } from "react";
-import { Loader2, Save, UserPlus, X, Copy, Trash2, KeyRound, Check } from "lucide-react";
+import { Loader2, Save, UserPlus, X, Copy, Trash2, KeyRound, Check, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
