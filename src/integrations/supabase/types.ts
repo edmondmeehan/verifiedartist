@@ -338,6 +338,94 @@ export type Database = {
           },
         ]
       }
+      org_connections: {
+        Row: {
+          api_key: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          meta: Json
+          org_id: string
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          meta?: Json
+          org_id: string
+          provider: string
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          meta?: Json
+          org_id?: string
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_connections_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          org_id: string
+          role: Database["public"]["Enums"]["org_role"]
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          org_id: string
+          role?: Database["public"]["Enums"]["org_role"]
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          org_id?: string
+          role?: Database["public"]["Enums"]["org_role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_invites_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_members: {
         Row: {
           created_at: string
@@ -455,7 +543,7 @@ export type Database = {
         | "indexnow"
         | "spotify"
         | "x"
-      org_role: "owner" | "admin" | "member"
+      org_role: "owner" | "admin" | "member" | "editor" | "viewer"
       plan_type: "per_artist" | "enterprise"
       platform_role: "super_admin" | "staff"
     }
@@ -600,7 +688,7 @@ export const Constants = {
         "spotify",
         "x",
       ],
-      org_role: ["owner", "admin", "member"],
+      org_role: ["owner", "admin", "member", "editor", "viewer"],
       plan_type: ["per_artist", "enterprise"],
       platform_role: ["super_admin", "staff"],
     },
