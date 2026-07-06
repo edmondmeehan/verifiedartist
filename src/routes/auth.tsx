@@ -6,18 +6,27 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
-  beforeLoad: async () => {
+  validateSearch: (s: Record<string, unknown>) => ({
+    redirect: typeof s.redirect === "string" ? s.redirect : undefined,
+    email: typeof s.email === "string" ? s.email : undefined,
+  }),
+  beforeLoad: async ({ search }) => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (data.session) throw redirect({ to: "/dashboard" });
+    if (data.session) {
+      const dest = search.redirect && search.redirect.startsWith("/") ? search.redirect : "/dashboard";
+      throw redirect({ to: dest });
+    }
   },
   component: AuthPage,
 });
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
+  const search = Route.useSearch();
+  const redirectPath = search.redirect && search.redirect.startsWith("/") ? search.redirect : "/dashboard";
+  const [mode, setMode] = useState<"signin" | "signup">(search.email ? "signup" : "signin");
+  const [email, setEmail] = useState(search.email ?? "");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -29,15 +38,15 @@ function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin + "/dashboard" },
+          options: { emailRedirectTo: window.location.origin + redirectPath },
         });
         if (error) throw error;
         toast.success("Account created. You're in.");
-        navigate({ to: "/dashboard" });
+        navigate({ to: redirectPath });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/dashboard" });
+        navigate({ to: redirectPath });
       }
     } catch (err: any) {
       toast.error(err?.message ?? "Authentication failed");
@@ -50,15 +59,16 @@ function AuthPage() {
     setLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + "/dashboard",
+        redirect_uri: window.location.origin + redirectPath,
       });
       if (result.error) throw result.error;
-      if (!result.redirected) navigate({ to: "/dashboard" });
+      if (!result.redirected) navigate({ to: redirectPath });
     } catch (err: any) {
       toast.error(err?.message ?? "Google sign-in failed");
       setLoading(false);
     }
   }
+
 
   return (
     <div className="grid min-h-screen bg-background text-foreground md:grid-cols-2">
