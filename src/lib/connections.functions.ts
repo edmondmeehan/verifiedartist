@@ -25,11 +25,13 @@ function mask(key: string | null | undefined): string | null {
   return `${key.slice(0, 4)}${"•".repeat(Math.max(4, key.length - 8))}${key.slice(-4)}`;
 }
 
+type JsonValue = string | number | boolean | null | { [k: string]: JsonValue } | JsonValue[];
 type SyncResult = {
   status: "ok" | "error";
   error?: string;
-  details?: Record<string, unknown>;
+  details?: { [k: string]: JsonValue };
 };
+
 
 async function checkSpotify(): Promise<SyncResult> {
   const id = process.env.SPOTIFY_CLIENT_ID;
