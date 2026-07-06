@@ -312,6 +312,7 @@ function ConnectionsSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
   const listFn = useServerFn(listConnections);
   const upsertFn = useServerFn(upsertConnection);
   const deleteFn = useServerFn(deleteConnection);
+  const syncFn = useServerFn(syncConnection);
 
   const q = useQuery({
     queryKey: ["org-connections", orgId],
@@ -321,6 +322,7 @@ function ConnectionsSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
 
   const [editing, setEditing] = useState<string | null>(null);
   const [keyInput, setKeyInput] = useState("");
+  const [syncingProvider, setSyncingProvider] = useState<string | null>(null);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["org-connections", orgId] });
 
@@ -337,6 +339,18 @@ function ConnectionsSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const sync = useMutation({
+    mutationFn: (provider: string) => syncFn({ data: { orgId, provider: provider as any } }),
+    onMutate: (provider) => { setSyncingProvider(provider); },
+    onSuccess: (res, provider) => {
+      if (res.last_sync_status === "ok") toast.success(`${PROVIDER_LABELS[provider] ?? provider}: healthy`);
+      else toast.error(`${PROVIDER_LABELS[provider] ?? provider} check failed`);
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+    onSettled: () => setSyncingProvider(null),
+  });
+
   if (!isAdmin) {
     return (
       <section className="rounded-sm border border-border bg-surface p-5">
@@ -346,26 +360,62 @@ function ConnectionsSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
     );
   }
 
+  const providers = q.data?.providers ?? [];
+  const errorCount = providers.filter((p) => p.connection?.lastSyncStatus === "error").length;
+  const anySyncing = sync.isPending || syncingProvider !== null;
+
+  const runAll = () => {
+    providers.forEach((p) => {
+      if (p.managedByPlatform || p.connection) sync.mutate(p.provider);
+    });
+  };
+
   return (
     <section className="rounded-sm border border-border bg-surface p-5">
-      <h3 className="font-display text-lg">API keys & connections</h3>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Per-org API keys used by the fan-out and audit engines. Platform-managed providers are already connected for every org.
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-display text-lg">API keys & connections</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Live health checks per platform. Platform-managed providers use Verified's shared credentials.
+          </p>
+        </div>
+        <button
+          onClick={runAll}
+          disabled={anySyncing}
+          className="inline-flex items-center gap-1 rounded-sm border border-border bg-surface px-2.5 py-1.5 text-xs hover:bg-surface-elevated disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3 w-3 ${anySyncing ? "animate-spin" : ""}`} /> Check all
+        </button>
+      </div>
+
+      {errorCount > 0 && (
+        <div className="mt-3 flex items-start gap-2 rounded-sm border border-destructive/40 bg-destructive/10 p-3 text-xs">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+          <div>
+            <div className="font-semibold text-destructive">{errorCount} connection{errorCount > 1 ? "s" : ""} failing</div>
+            <div className="mt-0.5 text-muted-foreground">Sync and audit fan-out is paused for the affected platforms until they're restored.</div>
+          </div>
+        </div>
+      )}
 
       {q.isLoading ? (
         <div className="mt-4 text-xs text-muted-foreground"><Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> Loading…</div>
       ) : (
         <div className="mt-4 space-y-2">
-          {(q.data?.providers ?? []).map((p) => {
+          {providers.map((p) => {
             const label = PROVIDER_LABELS[p.provider] ?? p.provider;
             const managed = p.managedByPlatform;
-            const connected = !!p.connection;
+            const conn = p.connection;
+            const connected = !!conn;
             const isEditing = editing === p.provider;
+            const isSyncing = syncingProvider === p.provider;
+            const syncStatus = conn?.lastSyncStatus;
+            const canSync = managed || connected;
+
             return (
               <div key={p.provider} className="rounded-sm border border-border bg-background p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-xs uppercase tracking-widest">{label}</span>
                     {managed ? (
                       <span className="inline-flex items-center gap-1 rounded-sm bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] uppercase text-primary">
@@ -380,37 +430,77 @@ function ConnectionsSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
                         Not connected
                       </span>
                     )}
+                    {syncStatus === "ok" && (
+                      <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase text-emerald-400">
+                        <CheckCircle2 className="h-3 w-3" /> Healthy
+                      </span>
+                    )}
+                    {syncStatus === "error" && (
+                      <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase text-destructive">
+                        <AlertTriangle className="h-3 w-3" /> Failing
+                      </span>
+                    )}
+                    {conn?.lastSyncAt && (
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        · checked {formatDistanceToNow(new Date(conn.lastSyncAt), { addSuffix: true })}
+                      </span>
+                    )}
+                    {canSync && !conn?.lastSyncAt && (
+                      <span className="font-mono text-[10px] text-muted-foreground">· never checked</span>
+                    )}
                   </div>
-                  {!managed && (
-                    <div className="flex items-center gap-2">
-                      {connected && !isEditing && (
-                        <>
-                          <span className="font-mono text-xs text-muted-foreground">{p.connection!.maskedKey}</span>
-                          <button
-                            onClick={() => { setEditing(p.provider); setKeyInput(""); }}
-                            className="rounded-sm border border-border px-2 py-1 text-xs hover:bg-surface-elevated"
-                          >
-                            Replace
-                          </button>
-                          <button
-                            onClick={() => { if (confirm(`Disconnect ${label}?`)) del.mutate(p.provider); }}
-                            className="rounded-sm p-1.5 text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </>
-                      )}
-                      {!connected && !isEditing && (
+
+                  <div className="flex items-center gap-2">
+                    {canSync && (
+                      <button
+                        onClick={() => sync.mutate(p.provider)}
+                        disabled={isSyncing}
+                        title={syncStatus === "error" ? "Retry health check" : "Run health check"}
+                        className={`inline-flex items-center gap-1 rounded-sm border px-2 py-1 text-xs disabled:opacity-50 ${
+                          syncStatus === "error"
+                            ? "border-destructive/50 text-destructive hover:bg-destructive/10"
+                            : "border-border hover:bg-surface-elevated"
+                        }`}
+                      >
+                        <RefreshCw className={`h-3 w-3 ${isSyncing ? "animate-spin" : ""}`} />
+                        {syncStatus === "error" ? "Retry" : "Sync"}
+                      </button>
+                    )}
+                    {!managed && connected && !isEditing && (
+                      <>
+                        <span className="font-mono text-xs text-muted-foreground">{conn!.maskedKey}</span>
                         <button
                           onClick={() => { setEditing(p.provider); setKeyInput(""); }}
-                          className="inline-flex items-center gap-1 rounded-sm border border-border px-2 py-1 text-xs hover:bg-surface-elevated"
+                          className="rounded-sm border border-border px-2 py-1 text-xs hover:bg-surface-elevated"
                         >
-                          <KeyRound className="h-3 w-3" /> Connect
+                          Replace
                         </button>
-                      )}
-                    </div>
-                  )}
+                        <button
+                          onClick={() => { if (confirm(`Disconnect ${label}?`)) del.mutate(p.provider); }}
+                          className="rounded-sm p-1.5 text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    )}
+                    {!managed && !connected && !isEditing && (
+                      <button
+                        onClick={() => { setEditing(p.provider); setKeyInput(""); }}
+                        className="inline-flex items-center gap-1 rounded-sm border border-border px-2 py-1 text-xs hover:bg-surface-elevated"
+                      >
+                        <KeyRound className="h-3 w-3" /> Connect
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {syncStatus === "error" && conn?.lastSyncError && (
+                  <div className="mt-2 rounded-sm border border-destructive/40 bg-destructive/5 p-2 text-[11px]">
+                    <div className="font-mono uppercase tracking-widest text-destructive">Error</div>
+                    <div className="mt-0.5 break-words text-muted-foreground">{conn.lastSyncError}</div>
+                  </div>
+                )}
+
                 {isEditing && !managed && (
                   <form
                     onSubmit={(e) => { e.preventDefault(); if (keyInput.trim()) upsert.mutate({ provider: p.provider, apiKey: keyInput.trim() }); }}
@@ -446,8 +536,9 @@ function ConnectionsSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
         </div>
       )}
       <p className="mt-3 text-[11px] text-muted-foreground">
-        Keys are stored encrypted at rest and only visible to org admins. Live status checks and the fan-out engine ship in Phase 2.
+        Keys are stored encrypted at rest and only visible to org admins. Non-managed providers show a live health check when the fan-out engine ships.
       </p>
     </section>
   );
+
 }
