@@ -344,6 +344,10 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          last_sync_at: string | null
+          last_sync_details: Json | null
+          last_sync_error: string | null
+          last_sync_status: string | null
           meta: Json
           org_id: string
           provider: string
@@ -354,6 +358,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          last_sync_at?: string | null
+          last_sync_details?: Json | null
+          last_sync_error?: string | null
+          last_sync_status?: string | null
           meta?: Json
           org_id: string
           provider: string
@@ -364,6 +372,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          last_sync_at?: string | null
+          last_sync_details?: Json | null
+          last_sync_error?: string | null
+          last_sync_status?: string | null
           meta?: Json
           org_id?: string
           provider?: string
