@@ -307,6 +307,13 @@ export type Database = {
             referencedRelation: "artists"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "distribution_log_verification_fk"
+            columns: ["verification_id"]
+            isOneToOne: false
+            referencedRelation: "update_verifications"
+            referencedColumns: ["id"]
+          },
         ]
       }
       distribution_targets: {
