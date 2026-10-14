@@ -15,6 +15,7 @@ import {
   deleteConnection,
   syncConnection,
 } from "@/lib/connections.functions";
+import { getWeeklyEmailSettings, updateWeeklyEmailSettings, previewWeeklyEmail, sendWeeklyEmailTest } from "@/lib/weekly.functions";
 import { useEffect, useState } from "react";
 import { Loader2, Save, UserPlus, X, Copy, Trash2, KeyRound, Check, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -84,6 +85,8 @@ function SettingsPage() {
             </div>
           </div>
         </section>
+
+        <WeeklyEmailSection orgId={q.data.org.id} isAdmin={isAdmin} />
 
         <TeamSection orgId={q.data.org.id} seats={q.data.org.seats} members={q.data.members} isAdmin={isAdmin} />
 
@@ -541,4 +544,92 @@ function ConnectionsSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
     </section>
   );
 
+}
+
+function WeeklyEmailSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolean }) {
+  const qc = useQueryClient();
+  const getFn = useServerFn(getWeeklyEmailSettings);
+  const saveFn = useServerFn(updateWeeklyEmailSettings);
+  const previewFn = useServerFn(previewWeeklyEmail);
+  const testFn = useServerFn(sendWeeklyEmailTest);
+  const q = useQuery({ queryKey: ["weekly-email", orgId], queryFn: () => getFn({ data: { orgId } }) });
+  const [enabled, setEnabled] = useState(true);
+  const [recipients, setRecipients] = useState("");
+  const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null);
+
+  useEffect(() => {
+    if (q.data) { setEnabled(q.data.enabled); setRecipients(q.data.recipients.join(", ")); }
+  }, [q.data]);
+
+  const save = useMutation({
+    mutationFn: () => saveFn({ data: {
+      orgId, enabled,
+      recipients: recipients.split(/[,\s]+/).map((r) => r.trim()).filter(Boolean),
+    } }),
+    onSuccess: () => { toast.success("Weekly email settings saved"); qc.invalidateQueries({ queryKey: ["weekly-email", orgId] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const prev = useMutation({
+    mutationFn: () => previewFn({ data: { orgId } }),
+    onSuccess: (r) => setPreview(r),
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const test = useMutation({
+    mutationFn: () => testFn({ data: { orgId } }),
+    onSuccess: (r) => toast.success(`Test sent to ${r.sentTo}`),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <section className="rounded-sm border border-border bg-surface p-5">
+      <h3 className="font-display text-lg">Weekly email</h3>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Every Monday morning: fixes verified, wrong AI answers, resale ticket links and open tasks for each artist.
+        {q.data?.lastSentAt && <> Last sent {formatDistanceToNow(new Date(q.data.lastSentAt))} ago.</>}
+      </p>
+      {q.data && !q.data.emailConfigured && (
+        <div className="mt-3 flex items-start gap-2 rounded-sm border border-verdict-stale/40 bg-verdict-stale/10 p-3 text-xs">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-verdict-stale" />
+          Email sending isn't set up yet (RESEND_API_KEY). You can still preview the email.
+        </div>
+      )}
+      <div className="mt-4 space-y-3">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} disabled={!isAdmin} />
+          Send the weekly email
+        </label>
+        <label className="block">
+          <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Recipients (blank = org owners & admins)</span>
+          <input value={recipients} onChange={(e) => setRecipients(e.target.value)} disabled={!isAdmin}
+            placeholder="manager@example.com, gm@label.com"
+            className="w-full rounded-sm border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary disabled:opacity-60" />
+        </label>
+        <div className="flex flex-wrap justify-end gap-2">
+          <button onClick={() => prev.mutate()} disabled={prev.isPending}
+            className="inline-flex items-center gap-2 rounded-sm border border-border px-4 py-2 text-sm hover:bg-surface-elevated disabled:opacity-50">
+            {prev.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Preview this week
+          </button>
+          <button onClick={() => test.mutate()} disabled={test.isPending || !q.data?.emailConfigured}
+            className="inline-flex items-center gap-2 rounded-sm border border-border px-4 py-2 text-sm hover:bg-surface-elevated disabled:opacity-50">
+            {test.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Send test to me
+          </button>
+          <button onClick={() => save.mutate()} disabled={!isAdmin || save.isPending}
+            className="inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50">
+            {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+          </button>
+        </div>
+      </div>
+      {preview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setPreview(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="flex h-[85vh] w-full max-w-3xl flex-col rounded-sm border border-border bg-surface">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div className="truncate text-sm"><span className="text-muted-foreground">Subject:</span> {preview.subject}</div>
+              <button onClick={() => setPreview(null)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+            </div>
+            <iframe title="Weekly email preview" srcDoc={preview.html} sandbox="" className="flex-1 bg-white" />
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }

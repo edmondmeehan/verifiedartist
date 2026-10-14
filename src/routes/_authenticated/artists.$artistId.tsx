@@ -424,7 +424,9 @@ function CanonicalEditor({ artistId, canonical }: { artistId: string; canonical:
       return fanFn({ data: { artistId } });
     },
     onSuccess: (r) => {
-      toast.success(`Saved · ${r.delivered} pushed, ${r.manual_task} manual task${r.manual_task === 1 ? "" : "s"}${r.failed ? `, ${r.failed} failed` : ""}. AI answers will be re-checked in 24h.`);
+      toast.success(r.isAnnouncement
+        ? `Announcement detected · AI checked now (${r.baseline?.accurate ?? 0}/${r.baseline?.answers ?? 0} accurate) and again at 6h, 24h, 48h${r.questionsAdded ? ` · ${r.questionsAdded} fan question${r.questionsAdded === 1 ? "" : "s"} added` : ""}`
+        : `Saved · ${r.delivered} pushed, ${r.manual_task} manual task${r.manual_task === 1 ? "" : "s"}${r.failed ? `, ${r.failed} failed` : ""}. AI answers will be re-checked in 24h.`);
       setDirty(false);
       qc.invalidateQueries({ queryKey: ["artist", artistId] });
     },
@@ -686,7 +688,10 @@ function DistributionPane({ artistId, targets, logs }: { artistId: string; targe
 
   const fanOut = useMutation({
     mutationFn: () => fanFn({ data: { artistId } }),
-    onSuccess: (r) => { toast.success(`${r.delivered} pushed · ${r.manual_task} manual task${r.manual_task === 1 ? "" : "s"}${r.failed ? ` · ${r.failed} failed` : ""}`); invalidate(); },
+    onSuccess: (r) => {
+      toast.success(`${r.isAnnouncement ? "Announcement · " : ""}${r.delivered} pushed · ${r.manual_task} manual task${r.manual_task === 1 ? "" : "s"}${r.failed ? ` · ${r.failed} failed` : ""}`);
+      invalidate();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
   const markDone = useMutation({
@@ -729,15 +734,25 @@ function DistributionPane({ artistId, targets, logs }: { artistId: string; targe
           <div className="rounded-sm border border-border bg-surface p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Latest update · {current.change_summary}</div>
+                <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  {current.kind === "announcement" && (
+                    <span className="rounded-sm border border-primary/50 bg-primary/10 px-1.5 py-px text-primary">Announcement watch</span>
+                  )}
+                  <span>Latest update · {current.change_summary}</span>
+                </div>
                 <div className={`mt-1 font-display text-lg ${VERIFICATION_META[current.status]?.cls ?? ""}`}>{VERIFICATION_META[current.status]?.label ?? current.status}</div>
                 <div className="mt-1 text-xs text-muted-foreground">
                   Distributed {formatDistanceToNow(new Date(current.created_at))} ago.
                   {current.status === "pending" && <> Next automatic check {format(new Date(current.next_check_at), "MMM d HH:mm")}.</>}
+                  {current.kind === "announcement" && current.baseline_result && (() => {
+                    const b = current.baseline_result as { accurate?: number; answers?: number; error?: string };
+                    return b.error ? null : <> Before: {b.accurate ?? 0} of {b.answers ?? 0} answers accurate.</>;
+                  })()}
                   {current.last_result && (() => {
                     const r = current.last_result as { accurate?: number; answers?: number };
-                    return <> Last check: {r.accurate ?? 0} of {r.answers ?? 0} AI answers accurate.</>;
+                    return <> {current.kind === "announcement" ? "Now" : "Last check"}: {r.accurate ?? 0} of {r.answers ?? 0} AI answers accurate.</>;
                   })()}
+                  {current.kind === "announcement" && <> Checks at 6h, 24h and 48h.</>}
                 </div>
               </div>
               {current.status === "pending" && (

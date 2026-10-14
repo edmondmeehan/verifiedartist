@@ -132,15 +132,62 @@ export const fanOutCanonical = createServerFn({ method: "POST" })
       results[t.target] = { status: "manual_task", detail: MANUAL_INSTRUCTIONS[t.target] ?? "Update this platform manually." };
     }
 
+    // What changed since the last distributed version? New dates, a new
+    // release or new ticket links make this an "announcement".
+    const { data: lastDistributed } = await supabase.from("update_verifications")
+      .select("canonical_version").eq("artist_id", data.artistId)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const prevVersion = lastDistributed?.canonical_version ?? canonical.version - 1;
+    const { data: prevRecord } = prevVersion > 0 && prevVersion !== canonical.version
+      ? await supabase.from("canonical_records").select("data")
+          .eq("artist_id", data.artistId).eq("version", prevVersion).maybeSingle()
+      : { data: null };
+    const { diffCanonical, announcementQuestions } = await import("./announcements");
+    const diff = prevRecord ? diffCanonical(prevRecord.data, canonical.data) : null;
+    const isAnnouncement = !!diff?.isAnnouncement;
+
     // Any earlier unverified update is superseded by this one.
     await supabase.from("update_verifications").update({ status: "superseded" })
       .eq("artist_id", data.artistId).eq("status", "pending");
 
-    const summary = `v${canonical.version} · ${summarizeChange(canonical.data)}`;
+    const summary = `v${canonical.version} · ${isAnnouncement ? diff!.summary : summarizeChange(canonical.data)}`;
+
+    let baseline: { agents?: string[]; answers?: number; accurate?: number; checked_at?: string; error?: string } | null = null;
+    let questionsAdded = 0;
+    if (isAnnouncement) {
+      // Ask the questions fans will ask about this announcement.
+      const { data: artistRow } = await supabase.from("artists").select("name").eq("id", data.artistId).maybeSingle();
+      const { data: existingQs } = await supabase.from("audit_queries").select("query_text").eq("artist_id", data.artistId);
+      const have = new Set((existingQs ?? []).map((q) => q.query_text.toLowerCase()));
+      const toAdd = announcementQuestions(artistRow?.name ?? "the artist", diff!).filter((q) => !have.has(q.text.toLowerCase()));
+      if (toAdd.length) {
+        await supabase.from("audit_queries").insert(toAdd.map((q) => ({ artist_id: data.artistId, query_text: q.text, category: q.category })));
+        questionsAdded = toAdd.length;
+      }
+      // "Before" snapshot: what AI says right now, before it has caught up.
+      try {
+        const { runAudit } = await import("./audit-engine.server");
+        const { results, agents } = await runAudit(supabase, data.artistId, { categories: ["tour", "tickets", "release"] });
+        const scored = results.filter((r) => !r.error);
+        baseline = {
+          agents,
+          answers: scored.length,
+          accurate: scored.filter((r) => r.verdict === "accurate").length,
+          checked_at: new Date().toISOString(),
+        };
+      } catch (e) {
+        baseline = { error: e instanceof Error ? e.message : String(e) };
+      }
+    }
+
     const { data: verification, error: vErr } = await supabase.from("update_verifications").insert({
       artist_id: data.artistId,
       canonical_version: canonical.version,
       change_summary: summary,
+      kind: isAnnouncement ? "announcement" : "update",
+      changes: (diff ?? null) as never,
+      baseline_result: baseline as never,
+      next_check_at: new Date(Date.now() + (isAnnouncement ? 6 : 24) * 3600_000).toISOString(),
     }).select().single();
     if (vErr) throw new Error(vErr.message);
 
@@ -167,7 +214,7 @@ export const fanOutCanonical = createServerFn({ method: "POST" })
 
     const counts = { delivered: 0, manual_task: 0, failed: 0 };
     for (const r of Object.values(results)) counts[r.status]++;
-    return { ...counts, verificationId: verification.id };
+    return { ...counts, verificationId: verification.id, isAnnouncement, questionsAdded, baseline };
   });
 
 // A person confirms they completed a manual task on that platform.

@@ -20,13 +20,17 @@ export async function checkVerification(db: DB, verificationId: string) {
   if (!v) throw new Error("Verification not found");
   if (v.status !== "pending") return v;
 
-  const { results, agents } = await runAudit(db, v.artist_id);
+  // Announcements are re-checked on the questions they affect; routine
+  // updates on the full question set.
+  const categories = v.kind === "announcement" ? ["tour", "tickets", "release"] : undefined;
+  const { results, agents } = await runAudit(db, v.artist_id, { categories });
   const scored = results.filter((r) => !r.error);
   const notAccurate = scored.filter((r) => r.verdict !== "accurate");
   const now = new Date();
   const passed = scored.length > 0 && notAccurate.length === 0;
   const checksDone = v.checks_done + 1;
-  const ageHours = (now.getTime() - new Date(v.created_at).getTime()) / HOUR;
+  const created = new Date(v.created_at).getTime();
+  const ageHours = (now.getTime() - created) / HOUR;
 
   const lastResult = {
     agents,
@@ -36,12 +40,16 @@ export async function checkVerification(db: DB, verificationId: string) {
     checked_at: now.toISOString(),
   };
 
-  let status: string = "pending";
-  let nextCheck: string = new Date(new Date(v.created_at).getTime() + SLA_HOURS * HOUR).toISOString();
+  // Scheduled checkpoints (hours after distribution).
+  const checkpoints = v.kind === "announcement" ? [6, 24, SLA_HOURS] : [24, SLA_HOURS];
+  let status = "pending";
+  let nextCheck = new Date(created + SLA_HOURS * HOUR).toISOString();
   if (passed) status = "verified";
   else if (ageHours >= SLA_HOURS - 1) status = "missed";
-  else if (ageHours >= 24) nextCheck = new Date(new Date(v.created_at).getTime() + SLA_HOURS * HOUR).toISOString();
-  else nextCheck = new Date(new Date(v.created_at).getTime() + 24 * HOUR).toISOString();
+  else {
+    const next = checkpoints.find((h) => h > ageHours + 0.25) ?? SLA_HOURS;
+    nextCheck = new Date(created + next * HOUR).toISOString();
+  }
 
   const { data: updated } = await db.from("update_verifications").update({
     status,
