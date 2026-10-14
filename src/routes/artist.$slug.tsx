@@ -49,7 +49,7 @@ export const Route = createFileRoute("/artist/$slug")({
   },
 
   component: PublicArtistPage,
-  notFoundComponent: ArtistNotFound,
+  notFoundComponent: () => <ArtistNotFound />,
   errorComponent: () => (
     <PageShell>
       <p style={{ color: MUTED }}>Something went wrong loading this page.</p>
