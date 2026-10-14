@@ -79,7 +79,6 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
-          last_auto_audit_at: string | null
           name: string
           official_site_url: string | null
           org_id: string
@@ -97,7 +96,6 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
-          last_auto_audit_at?: string | null
           name: string
           official_site_url?: string | null
           org_id: string
@@ -115,7 +113,6 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
-          last_auto_audit_at?: string | null
           name?: string
           official_site_url?: string | null
           org_id?: string
@@ -496,35 +493,26 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          last_weekly_email_at: string | null
           name: string
           plan: Database["public"]["Enums"]["plan_type"]
           seats: number
           updated_at: string
-          weekly_email_enabled: boolean
-          weekly_email_recipients: string[]
         }
         Insert: {
           created_at?: string
           id?: string
-          last_weekly_email_at?: string | null
           name: string
           plan?: Database["public"]["Enums"]["plan_type"]
           seats?: number
           updated_at?: string
-          weekly_email_enabled?: boolean
-          weekly_email_recipients?: string[]
         }
         Update: {
           created_at?: string
           id?: string
-          last_weekly_email_at?: string | null
           name?: string
           plan?: Database["public"]["Enums"]["plan_type"]
           seats?: number
           updated_at?: string
-          weekly_email_enabled?: boolean
-          weekly_email_recipients?: string[]
         }
         Relationships: []
       }
@@ -552,14 +540,11 @@ export type Database = {
       update_verifications: {
         Row: {
           artist_id: string
-          baseline_result: Json | null
           canonical_version: number
           change_summary: string | null
-          changes: Json | null
           checks_done: number
           created_at: string
           id: string
-          kind: string
           last_checked_at: string | null
           last_result: Json | null
           next_check_at: string
@@ -568,14 +553,11 @@ export type Database = {
         }
         Insert: {
           artist_id: string
-          baseline_result?: Json | null
           canonical_version: number
           change_summary?: string | null
-          changes?: Json | null
           checks_done?: number
           created_at?: string
           id?: string
-          kind?: string
           last_checked_at?: string | null
           last_result?: Json | null
           next_check_at?: string
@@ -584,14 +566,11 @@ export type Database = {
         }
         Update: {
           artist_id?: string
-          baseline_result?: Json | null
           canonical_version?: number
           change_summary?: string | null
-          changes?: Json | null
           checks_done?: number
           created_at?: string
           id?: string
-          kind?: string
           last_checked_at?: string | null
           last_result?: Json | null
           next_check_at?: string
