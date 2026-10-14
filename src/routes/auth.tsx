@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { redirect?: string; email?: string } => ({
     redirect: typeof s.redirect === "string" ? s.redirect : undefined,
     email: typeof s.email === "string" ? s.email : undefined,
   }),
