@@ -43,19 +43,33 @@ export const previewWeeklyEmail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ orgId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { buildOrgWeek, renderWeeklyHtml, weeklySubject, appUrl } = await import("./weekly-report.server");
+    const { buildOrgWeek, renderWeeklyHtml, weeklySubject, appUrl, recipientsForOrg } = await import("./weekly-report.server");
     const week = await buildOrgWeek(context.supabase, data.orgId);
-    return { subject: weeklySubject(week), html: renderWeeklyHtml(week, appUrl()) };
+    let recipients: string[] = [];
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      recipients = await recipientsForOrg(supabaseAdmin, data.orgId);
+    } catch { /* recipients are informational */ }
+    return {
+      subject: weeklySubject(week), html: renderWeeklyHtml(week, appUrl()), recipients,
+      artistCount: week.artists.length,
+      wrongCount: week.artists.reduce((n, a) => n + a.wrongAnswers.length, 0),
+    };
   });
 
-// Send this week's email to the signed-in user only.
+// Send this week's email as a test to one address (defaults to the signed-in user).
 export const sendWeeklyEmailTest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ orgId: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ orgId: z.string().uuid(), to: z.string().trim().email().optional() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: u } = await supabaseAdmin.auth.admin.getUserById(context.userId);
-    const email = u?.user?.email;
+    let email = data.to;
+    if (!email) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: u } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+      email = u?.user?.email;
+    } else {
+      await assertOrgAdmin(context.supabase, data.orgId, context.userId);
+    }
     if (!email) throw new Error("Your account has no email address.");
     const m = await import("./weekly-report.server");
     const week = await m.buildOrgWeek(context.supabase, data.orgId);
