@@ -2,34 +2,37 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-// Typical propagation delay per target, in hours. These simulate real-world
-// index/refresh times for each retrieval surface. Fan-out confirmations
-// resolve automatically once this much wall-clock time has passed since push.
-// Realistic propagation windows, calibrated against the 24h "green" and 48h
-// "SLA met" thresholds shown in the SLA report. Values reflect observed median
-// time-to-live for each surface, not best-case API acknowledgement.
-export const TARGET_DELAY_HOURS: Record<string, number> = {
-  // Surfaces we control or that accept push instantly — well inside 24h.
-  artist_site: 0.1,       // ~6 min: static rebuild + CDN purge
-  x: 0.1,                 // ~6 min: post live, embed cache warm
-  indexnow: 1,            // ~1h: Bing/Yandex accept instantly, index within the hour
+// Distribution is honest about what actually happens to each target:
+//  - artist_site: we write the canonical tour dates into the hosted artist page (real push).
+//  - indexnow:    we ping IndexNow with the hosted page URLs (real push, needs INDEXNOW_KEY).
+//  - everything else has no public write API we can use, so it becomes a
+//    manual task with exact instructions. A person marks it done.
+// Whether AI assistants actually picked the change up is decided later by
+// re-auditing them (update_verifications), never by a timer.
 
-  // Partner ingest pipelines — typically same-day, comfortably under 24h.
-  spotify: 6,             // Spotify for Artists canonical refresh cycle
-  bandsintown: 8,         // Bandsintown event ingest + dedupe pass
-
-  // Moderated / crawl-driven surfaces — land in the 24–48h SLA window.
-  songkick: 18,           // Songkick moderation queue (weekdays)
-  google_sitemap: 30,     // Googlebot recrawl of updated sitemap URLs
-
-  // Human-in-the-loop surface — routinely misses 48h without a nudge.
-  wikidata: 44,           // Volunteer edit + peer review; tight against SLA
+export const TARGET_LABELS: Record<string, string> = {
+  artist_site: "Hosted artist page",
+  bandsintown: "Bandsintown",
+  songkick: "Songkick",
+  wikidata: "Wikidata",
+  google_sitemap: "Google Search Console",
+  indexnow: "IndexNow (Bing, Yandex…)",
+  spotify: "Spotify for Artists",
+  x: "X (Twitter)",
 };
 
-const TARGET_ENUM = [
-  "artist_site","bandsintown","songkick","wikidata",
-  "google_sitemap","indexnow","spotify","x",
-] as const;
+const MANUAL_INSTRUCTIONS: Record<string, string> = {
+  bandsintown: "Update tour dates in Bandsintown for Artists (artist.bandsintown.com). Bandsintown feeds Google and most AI assistants' tour answers.",
+  songkick: "Update tour dates in Songkick Tourbox (tourbox.songkick.com).",
+  wikidata: "Edit the artist's Wikidata item (members, genres, latest release). Cite the official site as the reference.",
+  google_sitemap: "In Google Search Console, request indexing for the hosted artist page and the official site's tour page. (Google retired sitemap pings in 2023.)",
+  spotify: "Update bio, Artist Pick and concerts in Spotify for Artists (artists.spotify.com). Spotify has no write API.",
+  x: "Post the update from the artist's X account, linking the official ticket page.",
+};
+
+function siteUrl(): string {
+  return (process.env.PUBLIC_SITE_URL ?? "https://verifiedartist.lovable.app").replace(/\/$/, "");
+}
 
 function summarizeChange(canonicalData: unknown): string {
   const d = (canonicalData ?? {}) as Record<string, unknown>;
@@ -40,11 +43,17 @@ function summarizeChange(canonicalData: unknown): string {
   if (tour) parts.push(`${tour} tour date${tour === 1 ? "" : "s"}`);
   if (release) parts.push(`release: ${String(release).slice(0, 40)}`);
   if (bio) parts.push("bio");
-  return parts.length ? `Canonical v${Date.now()} → ${parts.join(", ")}` : "Canonical record refresh";
+  return parts.length ? parts.join(", ") : "record refresh";
 }
 
-// Fan out the current canonical record to every non-pending distribution target.
-// Writes one distribution_log row per target and bumps last_pushed_at.
+function formatDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+}
+
+type Delivery = { status: "delivered" | "manual_task" | "failed"; detail: string };
+
 export const fanOutCanonical = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ artistId: z.string().uuid() }).parse(d))
@@ -58,47 +67,145 @@ export const fanOutCanonical = createServerFn({ method: "POST" })
     const { data: targets, error: tErr } = await supabase
       .from("distribution_targets").select("*").eq("artist_id", data.artistId);
     if (tErr) throw new Error(tErr.message);
-    const pushable = (targets ?? []).filter((t) => t.status !== "pending");
-    if (pushable.length === 0) return { pushed: 0, skipped: (targets ?? []).length };
+
+    const { data: page } = await supabase
+      .from("artist_public_pages").select("slug, published, live_snapshot")
+      .eq("artist_id", data.artistId).maybeSingle();
+
+    const results: Record<string, Delivery> = {};
+
+    for (const t of targets ?? []) {
+      if (t.target === "artist_site") {
+        if (!page) {
+          results.artist_site = { status: "manual_task", detail: "No hosted artist page yet. Create and publish it from the Public page screen." };
+          continue;
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        const tour = (((canonical.data as any)?.tour_dates ?? []) as any[])
+          .filter((d) => d && typeof d.date === "string" && d.date >= today)
+          .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+          .slice(0, 50)
+          .map((d) => ({
+            date: formatDate(d.date),
+            venue: d.venue ?? "",
+            city: [d.city, d.country].filter(Boolean).join(", "),
+            type: d.status === "on_sale" ? "On sale" : d.status === "announced" ? "Announced" : (d.status ?? ""),
+            ticketUrl: d.ticket_url ?? "",
+          }));
+        const snapshot = { ...((page.live_snapshot ?? {}) as Record<string, unknown>), dates: tour };
+        const { error } = await supabase.from("artist_public_pages")
+          .update({ live_snapshot: snapshot as never }).eq("artist_id", data.artistId);
+        results.artist_site = error
+          ? { status: "failed", detail: error.message }
+          : page.published
+            ? { status: "delivered", detail: `Hosted page updated with ${tour.length} upcoming date${tour.length === 1 ? "" : "s"}.` }
+            : { status: "manual_task", detail: "Page updated but not published. Publish it so AI crawlers can read it." };
+        continue;
+      }
+
+      if (t.target === "indexnow") {
+        const key = process.env.INDEXNOW_KEY;
+        if (!key) { results.indexnow = { status: "manual_task", detail: "INDEXNOW_KEY is not configured, so search engines were not pinged." }; continue; }
+        if (!page?.published) { results.indexnow = { status: "manual_task", detail: "Publish the hosted artist page first; there is nothing to ping yet." }; continue; }
+        const base = siteUrl();
+        const host = new URL(base).host;
+        try {
+          const res = await fetch("https://api.indexnow.org/indexnow", {
+            method: "POST",
+            headers: { "content-type": "application/json; charset=utf-8" },
+            body: JSON.stringify({
+              host,
+              key,
+              keyLocation: `${base}/${key}.txt`,
+              urlList: [`${base}/artist/${page.slug}`, `${base}/api/public/artist/${page.slug}`],
+            }),
+          });
+          results.indexnow = res.ok
+            ? { status: "delivered", detail: `IndexNow accepted the ping (HTTP ${res.status}).` }
+            : { status: "failed", detail: `IndexNow rejected the ping (HTTP ${res.status}).` };
+        } catch (e) {
+          results.indexnow = { status: "failed", detail: e instanceof Error ? e.message : "IndexNow request failed" };
+        }
+        continue;
+      }
+
+      results[t.target] = { status: "manual_task", detail: MANUAL_INSTRUCTIONS[t.target] ?? "Update this platform manually." };
+    }
+
+    // Any earlier unverified update is superseded by this one.
+    await supabase.from("update_verifications").update({ status: "superseded" })
+      .eq("artist_id", data.artistId).eq("status", "pending");
 
     const summary = `v${canonical.version} · ${summarizeChange(canonical.data)}`;
-    const nowIso = new Date().toISOString();
-
-    const inserts = pushable.map((t) => ({
+    const { data: verification, error: vErr } = await supabase.from("update_verifications").insert({
       artist_id: data.artistId,
-      target: t.target,
-      payload_summary: summary,
-    }));
-    const { error: iErr } = await supabase.from("distribution_log").insert(inserts);
-    if (iErr) throw new Error(iErr.message);
+      canonical_version: canonical.version,
+      change_summary: summary,
+    }).select().single();
+    if (vErr) throw new Error(vErr.message);
 
-    for (const t of pushable) {
-      await supabase.from("distribution_targets")
-        .update({ last_pushed_at: nowIso })
-        .eq("artist_id", data.artistId).eq("target", t.target);
+    const nowIso = new Date().toISOString();
+    const rows = Object.entries(results).map(([target, r]) => ({
+      artist_id: data.artistId,
+      target: target as never,
+      payload_summary: summary,
+      delivery_status: r.status,
+      delivery_detail: r.detail,
+      verification_id: verification.id,
+    }));
+    if (rows.length) {
+      const { error: iErr } = await supabase.from("distribution_log").insert(rows);
+      if (iErr) throw new Error(iErr.message);
     }
-    return { pushed: pushable.length, skipped: (targets ?? []).length - pushable.length };
+
+    for (const [target, r] of Object.entries(results)) {
+      await supabase.from("distribution_targets").update({
+        status: r.status === "delivered" ? "connected" : r.status === "failed" ? "error" : "manual",
+        ...(r.status === "delivered" ? { last_pushed_at: nowIso } : {}),
+      }).eq("artist_id", data.artistId).eq("target", target as never);
+    }
+
+    const counts = { delivered: 0, manual_task: 0, failed: 0 };
+    for (const r of Object.values(results)) counts[r.status]++;
+    return { ...counts, verificationId: verification.id };
   });
 
-// Manually mark a distribution log as confirmed (e.g. operator verified a
-// Wikidata edit went live). Computes sla_met from (confirmed - pushed) < 48h.
-export const confirmDistribution = createServerFn({ method: "POST" })
+// A person confirms they completed a manual task on that platform.
+// This records the human action only; it does NOT claim AI answers changed.
+export const markManualTaskDone = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ logId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const supabase = context.supabase;
-    const { data: log } = await supabase.from("distribution_log")
-      .select("pushed_at").eq("id", data.logId).maybeSingle();
+    const { data: log } = await context.supabase.from("distribution_log")
+      .select("id, artist_id, target, delivery_detail").eq("id", data.logId).maybeSingle();
     if (!log) throw new Error("Log entry not found");
-    const now = new Date();
-    const pushed = new Date(log.pushed_at);
-    const withinSla = now.getTime() - pushed.getTime() <= 48 * 3600 * 1000;
-    const { error } = await supabase.from("distribution_log")
-      .update({ propagation_confirmed_at: now.toISOString(), sla_met: withinSla })
-      .eq("id", data.logId);
+    const { error } = await context.supabase.from("distribution_log").update({
+      delivery_status: "done_manual",
+      delivery_detail: `Marked done by a team member on ${new Date().toISOString().slice(0, 10)}.`,
+    }).eq("id", log.id);
     if (error) throw new Error(error.message);
-    return { ok: true, sla_met: withinSla };
+    await context.supabase.from("distribution_targets")
+      .update({ last_pushed_at: new Date().toISOString() })
+      .eq("artist_id", log.artist_id).eq("target", log.target);
+    return { ok: true };
   });
 
-// Adapter type export for cron worker.
-export type TargetName = typeof TARGET_ENUM[number];
+// Re-ask the AI assistants now instead of waiting for the scheduled check.
+export const recheckVerification = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ verificationId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { checkVerification } = await import("./verification.server");
+    const v = await checkVerification(context.supabase, data.verificationId);
+    return { status: v.status, last_result: v.last_result };
+  });
+
+export const listVerifications = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ artistId: z.string().uuid(), limit: z.number().int().min(1).max(200).optional() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase.from("update_verifications")
+      .select("*").eq("artist_id", data.artistId).order("created_at", { ascending: false }).limit(data.limit ?? 10);
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });

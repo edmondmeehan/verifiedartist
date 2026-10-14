@@ -8,7 +8,10 @@ export const VERDICT_META: Record<Verdict, { label: string; className: string; w
   pending:  { label: "Pending",  className: "verdict-badge text-verdict-pending border-verdict-pending/40 bg-verdict-pending/10", weight: 50 },
 };
 
-export function scoreFromRuns(runs: Array<{ verdict: Verdict }>): number | null {
+// "pending" runs (not yet scored, or the audit itself errored) are not a
+// judgement about the assistant, so they don't count toward the score.
+export function scoreFromRuns(all: Array<{ verdict: Verdict }>): number | null {
+  const runs = all.filter((r) => r.verdict !== "pending");
   if (runs.length === 0) return null;
   const sum = runs.reduce((acc, r) => acc + (VERDICT_META[r.verdict]?.weight ?? 0), 0);
   return Math.round(sum / runs.length);

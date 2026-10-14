@@ -2,8 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getArtistDetail, saveCanonicalRecord, refreshArtistFromSpotify } from "@/lib/artists.functions";
-import { runFullAudit, scoreManualAnswer, addAuditQuery, logDistribution } from "@/lib/audits.functions";
-import { fanOutCanonical, confirmDistribution } from "@/lib/distribution.functions";
+import { runFullAudit, scoreManualAnswer, addAuditQuery, getAgentAvailability } from "@/lib/audits.functions";
+import { fanOutCanonical, markManualTaskDone, recheckVerification, listVerifications, TARGET_LABELS } from "@/lib/distribution.functions";
+import { LINK_KIND_META, type ClassifiedLink, type LinkKind } from "@/lib/links";
 import { fetchTourDatesWithAI } from "@/lib/artist-page.functions";
 import { LastSyncedBadge } from "@/components/LastSyncedBadge";
 import { VerdictBadge } from "@/components/verdict-badge";
@@ -181,10 +182,17 @@ function ReportCard({ artistId, artistName, queries, runs }: {
   const runAuditFn = useServerFn(runFullAudit);
   const auditMutation = useMutation({
     mutationFn: () => runAuditFn({ data: { artistId } }),
-    onSuccess: (r) => { toast.success(`Audited ${r.completed} of ${r.total} queries`); qc.invalidateQueries({ queryKey: ["artist", artistId] }); qc.invalidateQueries({ queryKey: ["artists"] }); },
+    onSuccess: (r) => {
+      if (r.errors.length) toast.warning(`${r.completed} of ${r.total} answers scored · ${r.errors[0]}`);
+      else toast.success(`${r.completed} answers scored across ${r.agents.map((a) => AGENT_LABELS[a]).join(", ")}`);
+      qc.invalidateQueries({ queryKey: ["artist", artistId] }); qc.invalidateQueries({ queryKey: ["artists"] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const availFn = useServerFn(getAgentAvailability);
+  const avail = useQuery({ queryKey: ["agent-availability"], queryFn: () => availFn(), staleTime: 5 * 60_000 });
+  const automatic = new Set<Agent>((avail.data?.automatic ?? []) as Agent[]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [pasteFor, setPasteFor] = useState<{ queryId: string; agent: Agent } | null>(null);
   const [showAddQuery, setShowAddQuery] = useState(false);
@@ -202,24 +210,36 @@ function ReportCard({ artistId, artistName, queries, runs }: {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {queries.length} audit {queries.length === 1 ? "query" : "queries"} × 5 agents. Claude runs live via web search; paste other agents' answers manually.
+          {queries.length} fan {queries.length === 1 ? "question" : "questions"} × 5 assistants.{" "}
+          {automatic.size > 0
+            ? <>Asked live with web search: {[...automatic].map((a) => AGENT_LABELS[a]).join(", ")}. Others: paste their answers manually.</>
+            : <>No assistant API keys configured yet. Paste answers manually.</>}
         </p>
         <div className="flex gap-2">
           <button onClick={() => setShowAddQuery(true)} className="inline-flex items-center gap-1.5 rounded-sm border border-border px-3 py-1.5 text-xs font-semibold hover:bg-surface-elevated">
             <Plus className="h-3.5 w-3.5" /> Add query
           </button>
-          <button onClick={() => auditMutation.mutate()} disabled={auditMutation.isPending} className="inline-flex items-center gap-1.5 rounded-sm bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50">
-            {auditMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />} Run Claude audit now
+          <button onClick={() => auditMutation.mutate()} disabled={auditMutation.isPending || automatic.size === 0} className="inline-flex items-center gap-1.5 rounded-sm bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50">
+            {auditMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />} Run audit now
           </button>
         </div>
       </div>
+
+      <TicketLinkSummary latest={[...latest.values()]} queries={queries} />
 
       <div className="overflow-x-auto rounded-sm border border-border">
         <table className="data-table">
           <thead>
             <tr>
               <th className="w-1/3">Fan question</th>
-              {AGENTS.map((a) => <th key={a} className="text-center">{AGENT_LABELS[a]}</th>)}
+              {AGENTS.map((a) => (
+                <th key={a} className="text-center">
+                  {AGENT_LABELS[a]}
+                  <div className={`font-mono text-[9px] font-normal uppercase tracking-widest ${automatic.has(a) ? "text-verdict-accurate" : "text-muted-foreground"}`}>
+                    {automatic.has(a) ? "live" : "paste"}
+                  </div>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -276,6 +296,7 @@ function ReportCard({ artistId, artistName, queries, runs }: {
                                       </ul>
                                     </div>
                                   )}
+                                  <LinkList links={(r.links ?? []) as unknown as ClassifiedLink[]} />
                                   <div className="mt-2 font-mono text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(r.run_at))} ago</div>
                                 </>
                               ) : (
@@ -403,7 +424,7 @@ function CanonicalEditor({ artistId, canonical }: { artistId: string; canonical:
       return fanFn({ data: { artistId } });
     },
     onSuccess: (r) => {
-      toast.success(`Canonical saved · fanned out to ${r.pushed} target${r.pushed === 1 ? "" : "s"}`);
+      toast.success(`Saved · ${r.delivered} pushed, ${r.manual_task} manual task${r.manual_task === 1 ? "" : "s"}${r.failed ? `, ${r.failed} failed` : ""}. AI answers will be re-checked in 24h.`);
       setDirty(false);
       qc.invalidateQueries({ queryKey: ["artist", artistId] });
     },
@@ -559,54 +580,143 @@ function Cell({ value, onChange, placeholder }: { value: string; onChange: (v: s
     className="w-full rounded-sm border border-transparent bg-transparent px-1.5 py-1 text-xs outline-none focus:border-primary focus:bg-background" />;
 }
 
+/* --------------- TICKET LINKS --------------- */
+function LinkList({ links }: { links: ClassifiedLink[] }) {
+  if (!links?.length) return null;
+  return (
+    <div className="mt-3 border-t border-border pt-2">
+      <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Links given to the fan</div>
+      <ul className="mt-1 space-y-1">
+        {links.slice(0, 8).map((l) => (
+          <li key={l.url} className="flex items-center gap-1.5 text-xs">
+            <span className={`shrink-0 rounded-sm border px-1 py-px font-mono text-[9px] uppercase ${LINK_KIND_META[l.kind]?.className ?? ""}`}>
+              {LINK_KIND_META[l.kind]?.label ?? l.kind}
+            </span>
+            <a href={l.url} target="_blank" rel="noreferrer" className="truncate text-muted-foreground hover:text-primary">{l.domain || l.url}</a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function TicketLinkSummary({ latest, queries }: {
+  latest: Array<{ agent: string; query_id: string | null; links?: unknown }>;
+  queries: Array<{ id: string; category: string }>;
+}) {
+  const ticketQueryIds = new Set(queries.filter((q) => q.category === "tickets" || q.category === "tour").map((q) => q.id));
+  const counts: Record<LinkKind, number> = { official: 0, primary: 0, resale: 0, info: 0, other: 0 };
+  const resaleDomains = new Map<string, number>();
+  let answersWithLinks = 0;
+  for (const r of latest) {
+    if (!r.query_id || !ticketQueryIds.has(r.query_id)) continue;
+    const links = (r.links ?? []) as ClassifiedLink[];
+    if (!Array.isArray(links) || links.length === 0) continue;
+    answersWithLinks++;
+    for (const l of links) {
+      counts[l.kind] = (counts[l.kind] ?? 0) + 1;
+      if (l.kind === "resale") resaleDomains.set(l.domain, (resaleDomains.get(l.domain) ?? 0) + 1);
+    }
+  }
+  const buyLinks = counts.official + counts.primary + counts.resale;
+  if (answersWithLinks === 0) {
+    return (
+      <div className="mb-4 rounded-sm border border-dashed border-border p-4 text-xs text-muted-foreground">
+        <span className="font-semibold text-foreground">Where AI sends fans for tickets:</span> run an audit to see which ticket links each assistant gives for your tour and ticket questions.
+      </div>
+    );
+  }
+  const pct = (n: number) => (buyLinks ? Math.round((n / buyLinks) * 100) : 0);
+  return (
+    <div className="mb-4 rounded-sm border border-border bg-surface p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Where AI sends fans for tickets · tour & ticket questions</div>
+        <div className="font-mono text-[10px] text-muted-foreground">{answersWithLinks} answers with links</div>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-3">
+        <Stat label="Official / artist" value={`${pct(counts.official)}%`} cls="text-verdict-accurate" />
+        <Stat label="Primary ticketing" value={`${pct(counts.primary)}%`} cls="text-foreground" />
+        <Stat label="Resale" value={`${pct(counts.resale)}%`} cls={counts.resale ? "text-verdict-wrong" : "text-foreground"} />
+      </div>
+      {resaleDomains.size > 0 && (
+        <div className="mt-3 text-xs text-muted-foreground">
+          Resale sites AI is recommending: {[...resaleDomains.entries()].sort((a, b) => b[1] - a[1]).map(([d, n]) => `${d} (${n})`).join(", ")}
+        </div>
+      )}
+      {buyLinks === 0 && <div className="mt-2 text-xs text-verdict-stale">Assistants cited sources but gave no place to buy tickets.</div>}
+    </div>
+  );
+}
+
+function Stat({ label, value, cls }: { label: string; value: string; cls?: string }) {
+  return (
+    <div>
+      <div className={`font-display text-2xl ${cls ?? ""}`}>{value}</div>
+      <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
 /* --------------- DISTRIBUTION --------------- */
-const TARGET_LABELS: Record<string, string> = {
-  artist_site: "Artist Site",
-  bandsintown: "Bandsintown",
-  songkick: "Songkick",
-  wikidata: "Wikidata",
-  google_sitemap: "Google Sitemap",
-  indexnow: "IndexNow",
-  spotify: "Spotify",
-  x: "X (Twitter)",
+const DELIVERY_META: Record<string, { label: string; cls: string }> = {
+  delivered: { label: "Pushed", cls: "text-verdict-accurate" },
+  done_manual: { label: "Done (manual)", cls: "text-verdict-accurate" },
+  manual_task: { label: "Manual task", cls: "text-verdict-stale" },
+  failed: { label: "Failed", cls: "text-verdict-wrong" },
+};
+
+const VERIFICATION_META: Record<string, { label: string; cls: string }> = {
+  pending: { label: "Waiting for AI re-check", cls: "text-verdict-stale" },
+  verified: { label: "Verified · AI answers now accurate", cls: "text-verdict-accurate" },
+  missed: { label: "Not picked up within 48h", cls: "text-verdict-wrong" },
+  superseded: { label: "Superseded by a newer update", cls: "text-muted-foreground" },
 };
 
 function DistributionPane({ artistId, targets, logs }: { artistId: string; targets: Awaited<ReturnType<typeof getArtistDetail>>["targets"]; logs: Awaited<ReturnType<typeof getArtistDetail>>["logs"] }) {
   const qc = useQueryClient();
-  const logFn = useServerFn(logDistribution);
   const fanFn = useServerFn(fanOutCanonical);
-  const confirmFn = useServerFn(confirmDistribution);
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["artist", artistId] });
+  const doneFn = useServerFn(markManualTaskDone);
+  const recheckFn = useServerFn(recheckVerification);
+  const verFn = useServerFn(listVerifications);
+  const verifications = useQuery({ queryKey: ["verifications", artistId], queryFn: () => verFn({ data: { artistId } }) });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["artist", artistId] });
+    qc.invalidateQueries({ queryKey: ["verifications", artistId] });
+  };
 
-  const pushOne = useMutation({
-    mutationFn: (v: { target: string }) => logFn({ data: { artistId, target: v.target as never, payload_summary: "Manual push logged from UI" } }),
-    onSuccess: () => { toast.success("Push logged"); invalidate(); },
-    onError: (e: Error) => toast.error(e.message),
-  });
   const fanOut = useMutation({
     mutationFn: () => fanFn({ data: { artistId } }),
-    onSuccess: (r) => { toast.success(`Fanned out to ${r.pushed} target${r.pushed === 1 ? "" : "s"}${r.skipped ? ` · ${r.skipped} pending` : ""}`); invalidate(); },
+    onSuccess: (r) => { toast.success(`${r.delivered} pushed · ${r.manual_task} manual task${r.manual_task === 1 ? "" : "s"}${r.failed ? ` · ${r.failed} failed` : ""}`); invalidate(); },
     onError: (e: Error) => toast.error(e.message),
   });
-  const confirm = useMutation({
-    mutationFn: (logId: string) => confirmFn({ data: { logId } }),
-    onSuccess: (r) => { toast.success(r.sla_met ? "Confirmed · within SLA" : "Confirmed · SLA missed"); invalidate(); },
+  const markDone = useMutation({
+    mutationFn: (logId: string) => doneFn({ data: { logId } }),
+    onSuccess: () => { toast.success("Marked done"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const recheck = useMutation({
+    mutationFn: (verificationId: string) => recheckFn({ data: { verificationId } }),
+    onSuccess: (r) => {
+      const res = (r.last_result ?? {}) as { accurate?: number; answers?: number };
+      toast.success(`${VERIFICATION_META[r.status]?.label ?? r.status} · ${res.accurate ?? 0}/${res.answers ?? 0} answers accurate`);
+      invalidate();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const totalPushes = logs.length;
-  const confirmedCount = logs.filter((l) => l.propagation_confirmed_at).length;
-  const pendingCount = totalPushes - confirmedCount;
-  const slaMetCount = logs.filter((l) => l.sla_met === true).length;
-  const slaPct = totalPushes ? Math.round((slaMetCount / totalPushes) * 100) : null;
+  const current = verifications.data?.[0];
+  const currentLogs = current ? logs.filter((l) => l.verification_id === current.id) : [];
+  const openTasks = currentLogs.filter((l) => l.delivery_status === "manual_task");
+  const history = (verifications.data ?? []).filter((v) => v.status === "verified" || v.status === "missed");
+  const metCount = history.filter((v) => v.status === "verified" && v.verified_at && (new Date(v.verified_at).getTime() - new Date(v.created_at).getTime()) <= 48 * 3600_000).length;
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2 space-y-6">
         <div className="flex items-center justify-between rounded-sm border border-border bg-surface px-4 py-3">
           <div>
-            <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Fan-out engine</div>
-            <div className="mt-0.5 text-sm">Push the current canonical version to every connected target.</div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Distribute current record</div>
+            <div className="mt-0.5 text-sm">Pushes to the hosted page and IndexNow, and creates manual tasks for platforms without a write API.</div>
           </div>
           <button onClick={() => fanOut.mutate()} disabled={fanOut.isPending}
             className="inline-flex items-center gap-1.5 rounded-sm bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50">
@@ -615,54 +725,61 @@ function DistributionPane({ artistId, targets, logs }: { artistId: string; targe
           </button>
         </div>
 
+        {current && (
+          <div className="rounded-sm border border-border bg-surface p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Latest update · {current.change_summary}</div>
+                <div className={`mt-1 font-display text-lg ${VERIFICATION_META[current.status]?.cls ?? ""}`}>{VERIFICATION_META[current.status]?.label ?? current.status}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Distributed {formatDistanceToNow(new Date(current.created_at))} ago.
+                  {current.status === "pending" && <> Next automatic check {format(new Date(current.next_check_at), "MMM d HH:mm")}.</>}
+                  {current.last_result && (() => {
+                    const r = current.last_result as { accurate?: number; answers?: number };
+                    return <> Last check: {r.accurate ?? 0} of {r.answers ?? 0} AI answers accurate.</>;
+                  })()}
+                </div>
+              </div>
+              {current.status === "pending" && (
+                <button onClick={() => recheck.mutate(current.id)} disabled={recheck.isPending}
+                  className="inline-flex items-center gap-1.5 rounded-sm border border-border px-3 py-1.5 text-xs font-semibold hover:bg-surface-elevated disabled:opacity-50">
+                  {recheck.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  Re-check AI now
+                </button>
+              )}
+            </div>
+            {openTasks.length > 0 && (
+              <div className="mt-3 border-t border-border pt-3 text-xs text-verdict-stale">
+                {openTasks.length} manual task{openTasks.length === 1 ? "" : "s"} still open below. AI assistants often pull from these platforms.
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid gap-3 md:grid-cols-2">
           {targets.map((t) => {
-            const targetLogs = logs.filter((l) => l.target === t.target);
+            const log = currentLogs.find((l) => l.target === t.target) ?? logs.find((l) => l.target === t.target);
+            const meta = log ? DELIVERY_META[log.delivery_status] : null;
             return (
               <div key={t.id} className="rounded-sm border border-border bg-surface p-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <div>
                     <div className="font-display text-base">{TARGET_LABELS[t.target] ?? t.target}</div>
-                    <div className={`mt-0.5 font-mono text-[10px] uppercase tracking-widest ${
-                      t.status === "connected" ? "text-verdict-accurate" :
-                      t.status === "manual" ? "text-verdict-stale" :
-                      t.status === "error" ? "text-verdict-wrong" : "text-muted-foreground"
-                    }`}>{t.status}</div>
+                    <div className={`mt-0.5 font-mono text-[10px] uppercase tracking-widest ${meta?.cls ?? "text-muted-foreground"}`}>
+                      {meta?.label ?? "Not distributed yet"}
+                    </div>
                   </div>
-                  <button onClick={() => pushOne.mutate({ target: t.target })} disabled={pushOne.isPending}
-                    className="rounded-sm border border-border px-2.5 py-1 text-xs hover:bg-surface-elevated disabled:opacity-50">
-                    Log push
-                  </button>
+                  {log?.delivery_status === "manual_task" && (
+                    <button onClick={() => markDone.mutate(log.id)} disabled={markDone.isPending}
+                      className="shrink-0 rounded-sm border border-border px-2.5 py-1 text-xs hover:bg-surface-elevated disabled:opacity-50">
+                      Mark done
+                    </button>
+                  )}
                 </div>
-                <div className="mt-3 text-xs text-muted-foreground">
-                  {t.last_pushed_at ? `Last push ${formatDistanceToNow(new Date(t.last_pushed_at))} ago` : "Never pushed"}
+                {log?.delivery_detail && <p className="mt-2 text-xs text-muted-foreground">{log.delivery_detail}</p>}
+                <div className="mt-2 font-mono text-[10px] text-muted-foreground">
+                  {t.last_pushed_at ? `Last updated ${formatDistanceToNow(new Date(t.last_pushed_at))} ago` : "Never updated"}
                 </div>
-                {targetLogs.length > 0 && (
-                  <div className="mt-3 space-y-1 border-t border-border pt-2 font-mono text-[10px]">
-                    {targetLogs.slice(0, 3).map((l) => {
-                      const status = l.propagation_confirmed_at
-                        ? (l.sla_met ? "confirmed · SLA met" : "confirmed · SLA missed")
-                        : "pending";
-                      const cls = l.propagation_confirmed_at
-                        ? (l.sla_met ? "text-verdict-accurate" : "text-verdict-wrong")
-                        : "text-verdict-stale";
-                      return (
-                        <div key={l.id} className="flex items-center justify-between gap-2">
-                          <span className="text-muted-foreground">{format(new Date(l.pushed_at), "MMM d HH:mm")}</span>
-                          <div className="flex items-center gap-2">
-                            <span className={cls}>{status}</span>
-                            {!l.propagation_confirmed_at && (
-                              <button onClick={() => confirm.mutate(l.id)} disabled={confirm.isPending}
-                                className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground hover:text-primary">
-                                mark
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
             );
           })}
@@ -671,16 +788,14 @@ function DistributionPane({ artistId, targets, logs }: { artistId: string; targe
 
       <aside className="space-y-4">
         <div className="rounded-sm border border-border bg-surface p-5">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">SLA</div>
-          <div className="mt-1 font-display text-3xl">48h</div>
+          <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">48-hour check</div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Every canonical change must propagate to every connected retrieval source within 48 hours. Auto-confirmation runs every 15 minutes.
+            After each update we re-ask the AI assistants at 24h and 48h. An update counts as verified only when every live assistant now answers accurately. Nothing is confirmed on a timer.
           </p>
           <div className="mt-4 border-t border-border pt-3 text-xs">
-            <div className="mb-1 flex justify-between"><span className="text-muted-foreground">Total pushes</span><span>{totalPushes}</span></div>
-            <div className="mb-1 flex justify-between"><span className="text-muted-foreground">Confirmed</span><span className="text-verdict-accurate">{confirmedCount}</span></div>
-            <div className="mb-1 flex justify-between"><span className="text-muted-foreground">Pending</span><span className="text-verdict-stale">{pendingCount}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">SLA met</span><span>{slaPct === null ? "—" : `${slaPct}%`}</span></div>
+            <div className="mb-1 flex justify-between"><span className="text-muted-foreground">Updates checked</span><span>{history.length}</span></div>
+            <div className="mb-1 flex justify-between"><span className="text-muted-foreground">Verified within 48h</span><span className="text-verdict-accurate">{metCount}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Missed</span><span className="text-verdict-wrong">{history.filter((v) => v.status === "missed").length}</span></div>
           </div>
         </div>
       </aside>

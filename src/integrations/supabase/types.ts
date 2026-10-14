@@ -176,6 +176,7 @@ export type Database = {
           artist_id: string
           discrepancies: Json | null
           id: string
+          links: Json | null
           query_id: string | null
           response_text: string | null
           run_at: string
@@ -187,6 +188,7 @@ export type Database = {
           artist_id: string
           discrepancies?: Json | null
           id?: string
+          links?: Json | null
           query_id?: string | null
           response_text?: string | null
           run_at?: string
@@ -198,6 +200,7 @@ export type Database = {
           artist_id?: string
           discrepancies?: Json | null
           id?: string
+          links?: Json | null
           query_id?: string | null
           response_text?: string | null
           run_at?: string
@@ -262,30 +265,39 @@ export type Database = {
       distribution_log: {
         Row: {
           artist_id: string
+          delivery_detail: string | null
+          delivery_status: string
           id: string
           payload_summary: string | null
           propagation_confirmed_at: string | null
           pushed_at: string
           sla_met: boolean | null
           target: Database["public"]["Enums"]["dist_target"]
+          verification_id: string | null
         }
         Insert: {
           artist_id: string
+          delivery_detail?: string | null
+          delivery_status?: string
           id?: string
           payload_summary?: string | null
           propagation_confirmed_at?: string | null
           pushed_at?: string
           sla_met?: boolean | null
           target: Database["public"]["Enums"]["dist_target"]
+          verification_id?: string | null
         }
         Update: {
           artist_id?: string
+          delivery_detail?: string | null
+          delivery_status?: string
           id?: string
           payload_summary?: string | null
           propagation_confirmed_at?: string | null
           pushed_at?: string
           sla_met?: boolean | null
           target?: Database["public"]["Enums"]["dist_target"]
+          verification_id?: string | null
         }
         Relationships: [
           {
@@ -517,6 +529,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      update_verifications: {
+        Row: {
+          artist_id: string
+          canonical_version: number
+          change_summary: string | null
+          checks_done: number
+          created_at: string
+          id: string
+          last_checked_at: string | null
+          last_result: Json | null
+          next_check_at: string
+          status: string
+          verified_at: string | null
+        }
+        Insert: {
+          artist_id: string
+          canonical_version: number
+          change_summary?: string | null
+          checks_done?: number
+          created_at?: string
+          id?: string
+          last_checked_at?: string | null
+          last_result?: Json | null
+          next_check_at?: string
+          status?: string
+          verified_at?: string | null
+        }
+        Update: {
+          artist_id?: string
+          canonical_version?: number
+          change_summary?: string | null
+          checks_done?: number
+          created_at?: string
+          id?: string
+          last_checked_at?: string | null
+          last_result?: Json | null
+          next_check_at?: string
+          status?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "update_verifications_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

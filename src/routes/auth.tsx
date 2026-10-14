@@ -83,7 +83,7 @@ function AuthPage() {
             The AI record<br />of record for<br /><span className="text-primary">your artists.</span>
           </p>
           <p className="mt-6 max-w-sm text-sm text-muted-foreground">
-            One canonical source. Five AI assistants monitored daily. Sub-48h propagation to every retrieval surface.
+            One official record. AI assistants asked your fans' questions with live search. Every fix re-checked in real AI answers.
           </p>
         </div>
         <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">

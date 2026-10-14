@@ -38,7 +38,7 @@ function Landing() {
             <span className="text-primary">your artists.</span>
           </h1>
           <p className="mt-8 max-w-2xl text-lg text-muted-foreground">
-            ChatGPT, Claude, Gemini, Perplexity, and Grok answer millions of fan questions a day. Verified audits every answer, flags what's stale or wrong, and pushes canonical facts to every retrieval source — with a 48-hour SLA and a proof trail.
+            Fans now ask ChatGPT, Gemini, Claude and Perplexity when you're playing and where to buy tickets. Verified asks them those questions with live search, shows which answers are wrong and which send fans to resale sites, and re-checks the answers after every fix — so you can see it worked.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
             <Link
@@ -62,9 +62,9 @@ function Landing() {
       <section id="how" className="border-t border-border">
         <div className="mx-auto grid max-w-7xl gap-px bg-border md:grid-cols-3">
           {[
-            { icon: Radio, title: "Audit", body: "Every day, we ask each AI assistant the questions your fans ask. We score their answers against your canonical record." },
-            { icon: ShieldCheck, title: "Correct", body: "One canonical artist record. Tour dates, releases, bios, links. Versioned. Signed off." },
-            { icon: Zap, title: "Distribute", body: "Push updates to Bandsintown, Google, IndexNow, Wikidata, and your artist site. Prove propagation in under 48 hours." },
+            { icon: Radio, title: "Audit", body: "We ask each AI assistant the questions your fans ask, score the answers against your official record, and track which ticket links they give." },
+            { icon: ShieldCheck, title: "Correct", body: "One official artist record — tour dates, ticket links, releases, bio. Versioned and signed off by your team." },
+            { icon: Zap, title: "Verify", body: "Publish to your hosted artist page and IndexNow, get a checklist for Bandsintown, Spotify and Wikidata, then we re-ask the AIs at 24h and 48h to prove the fix landed." },
           ].map(({ icon: Icon, title, body }) => (
             <div key={title} className="bg-background p-10">
               <Icon className="h-6 w-6 text-primary" />
