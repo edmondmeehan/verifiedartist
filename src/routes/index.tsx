@@ -17,6 +17,7 @@ function Landing() {
           </Link>
           <Link
             to="/auth"
+            search={{}}
             className="rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110"
           >
             Sign in
@@ -42,6 +43,7 @@ function Landing() {
           <div className="mt-10 flex flex-wrap gap-3">
             <Link
               to="/auth"
+              search={{}}
               className="inline-flex items-center gap-2 rounded-sm bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:brightness-110"
             >
               Start monitoring <ArrowRight className="h-4 w-4" />
