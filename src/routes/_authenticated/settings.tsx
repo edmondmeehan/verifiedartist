@@ -555,15 +555,20 @@ function WeeklyEmailSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
   const q = useQuery({ queryKey: ["weekly-email", orgId], queryFn: () => getFn({ data: { orgId } }) });
   const [enabled, setEnabled] = useState(true);
   const [recipients, setRecipients] = useState("");
-  const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null);
+  const [preview, setPreview] = useState<{ subject: string; html: string; recipients: string[]; artistCount: number; wrongCount: number } | null>(null);
+  const [reviewed, setReviewed] = useState(false);
+  const [testTo, setTestTo] = useState("");
 
   useEffect(() => {
     if (q.data) { setEnabled(q.data.enabled); setRecipients(q.data.recipients.join(", ")); }
   }, [q.data]);
 
+  const wasEnabled = q.data?.enabled ?? false;
+  const turningOn = enabled && !wasEnabled;
+
   const save = useMutation({
-    mutationFn: () => saveFn({ data: {
-      orgId, enabled,
+    mutationFn: (force?: boolean) => saveFn({ data: {
+      orgId, enabled: force ?? enabled,
       recipients: recipients.split(/[,\s]+/).map((r) => r.trim()).filter(Boolean),
     } }),
     onSuccess: () => { toast.success("Weekly email settings saved"); qc.invalidateQueries({ queryKey: ["weekly-email", orgId] }); },
@@ -571,11 +576,11 @@ function WeeklyEmailSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
   });
   const prev = useMutation({
     mutationFn: () => previewFn({ data: { orgId } }),
-    onSuccess: (r) => setPreview(r),
+    onSuccess: (r) => { setPreview(r); setReviewed(true); },
     onError: (e: Error) => toast.error(e.message),
   });
   const test = useMutation({
-    mutationFn: () => testFn({ data: { orgId } }),
+    mutationFn: (to?: string) => testFn({ data: { orgId, to: to || undefined } }),
     onSuccess: (r) => toast.success(`Test sent to ${r.sentTo}`),
     onError: (e: Error) => toast.error(e.message),
   });
@@ -593,11 +598,19 @@ function WeeklyEmailSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
           Email sending isn't set up yet (RESEND_API_KEY). You can still preview the email.
         </div>
       )}
+      <ol className="mt-4 grid gap-2 text-xs sm:grid-cols-3">
+        <li className={`rounded-sm border p-2 ${reviewed ? "border-primary/50" : "border-border"}`}>1. Preview this week's report{reviewed && " ✓"}</li>
+        <li className="rounded-sm border border-border p-2">2. Send a test to yourself or a colleague</li>
+        <li className={`rounded-sm border p-2 ${wasEnabled ? "border-primary/50" : "border-border"}`}>3. Turn on delivery{wasEnabled && " ✓"}</li>
+      </ol>
       <div className="mt-4 space-y-3">
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} disabled={!isAdmin} />
-          Send the weekly email
+          Send the weekly email to recipients
         </label>
+        {turningOn && !reviewed && (
+          <p className="text-xs text-verdict-stale">Preview this week's report before turning delivery on.</p>
+        )}
         <label className="block">
           <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Recipients (blank = org owners & admins)</span>
           <input value={recipients} onChange={(e) => setRecipients(e.target.value)} disabled={!isAdmin}
@@ -609,11 +622,11 @@ function WeeklyEmailSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
             className="inline-flex items-center gap-2 rounded-sm border border-border px-4 py-2 text-sm hover:bg-surface-elevated disabled:opacity-50">
             {prev.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Preview this week
           </button>
-          <button onClick={() => test.mutate()} disabled={test.isPending || !q.data?.emailConfigured}
+          <button onClick={() => test.mutate(undefined)} disabled={test.isPending || !q.data?.emailConfigured}
             className="inline-flex items-center gap-2 rounded-sm border border-border px-4 py-2 text-sm hover:bg-surface-elevated disabled:opacity-50">
             {test.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Send test to me
           </button>
-          <button onClick={() => save.mutate()} disabled={!isAdmin || save.isPending}
+          <button onClick={() => save.mutate(undefined)} disabled={!isAdmin || save.isPending || (turningOn && !reviewed)}
             className="inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50">
             {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
           </button>
@@ -621,12 +634,31 @@ function WeeklyEmailSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
       </div>
       {preview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setPreview(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="flex h-[85vh] w-full max-w-3xl flex-col rounded-sm border border-border bg-surface">
+          <div onClick={(e) => e.stopPropagation()} className="flex h-[90vh] w-full max-w-3xl flex-col rounded-sm border border-border bg-surface">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="truncate text-sm"><span className="text-muted-foreground">Subject:</span> {preview.subject}</div>
               <button onClick={() => setPreview(null)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
             </div>
+            <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground">
+              {preview.artistCount} artist{preview.artistCount === 1 ? "" : "s"} · {preview.wrongCount} wrong answer{preview.wrongCount === 1 ? "" : "s"} ·
+              Would go to: {preview.recipients.length ? preview.recipients.join(", ") : "no one yet"}
+            </div>
             <iframe title="Weekly email preview" srcDoc={preview.html} sandbox="" className="flex-1 bg-white" />
+            <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
+              <input value={testTo} onChange={(e) => setTestTo(e.target.value)} type="email"
+                placeholder={isAdmin ? "Test address (blank = me)" : "Sends to you"} disabled={!isAdmin}
+                className="min-w-0 flex-1 rounded-sm border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary disabled:opacity-60" />
+              <button onClick={() => test.mutate(testTo.trim() || undefined)} disabled={test.isPending || !q.data?.emailConfigured}
+                className="inline-flex items-center gap-2 rounded-sm border border-border px-4 py-2 text-sm hover:bg-surface-elevated disabled:opacity-50">
+                {test.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Send test
+              </button>
+              {isAdmin && !wasEnabled && (
+                <button onClick={() => { setEnabled(true); setPreview(null); save.mutate(true); }} disabled={save.isPending}
+                  className="rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50">
+                  Looks good — turn on delivery
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
