@@ -567,8 +567,8 @@ function WeeklyEmailSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
   const turningOn = enabled && !wasEnabled;
 
   const save = useMutation({
-    mutationFn: () => saveFn({ data: {
-      orgId, enabled,
+    mutationFn: (force?: boolean) => saveFn({ data: {
+      orgId, enabled: force ?? enabled,
       recipients: recipients.split(/[,\s]+/).map((r) => r.trim()).filter(Boolean),
     } }),
     onSuccess: () => { toast.success("Weekly email settings saved"); qc.invalidateQueries({ queryKey: ["weekly-email", orgId] }); },
@@ -626,7 +626,7 @@ function WeeklyEmailSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
             className="inline-flex items-center gap-2 rounded-sm border border-border px-4 py-2 text-sm hover:bg-surface-elevated disabled:opacity-50">
             {test.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Send test to me
           </button>
-          <button onClick={() => save.mutate()} disabled={!isAdmin || save.isPending || (turningOn && !reviewed)}
+          <button onClick={() => save.mutate(undefined)} disabled={!isAdmin || save.isPending || (turningOn && !reviewed)}
             className="inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50">
             {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
           </button>
@@ -653,7 +653,7 @@ function WeeklyEmailSection({ orgId, isAdmin }: { orgId: string; isAdmin: boolea
                 {test.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Send test
               </button>
               {isAdmin && !wasEnabled && (
-                <button onClick={() => { setEnabled(true); setPreview(null); save.mutate(); }} disabled={save.isPending}
+                <button onClick={() => { setEnabled(true); setPreview(null); save.mutate(true); }} disabled={save.isPending}
                   className="rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50">
                   Looks good — turn on delivery
                 </button>
