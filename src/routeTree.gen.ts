@@ -9,65 +9,40 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as InviteTokenRouteImport } from './routes/invite.$token'
-import { Route as ArtistSlugRouteImport } from './routes/artist.$slug'
-import { Route as AuthenticatedSlaRouteImport } from './routes/_authenticated/sla'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedAuditsRouteImport } from './routes/_authenticated/audits'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
-import { Route as AuthenticatedArtistsArtistIdRouteImport } from './routes/_authenticated/artists.$artistId'
+import { Route as AuthenticatedAuditsRouteImport } from './routes/_authenticated/audits'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedSlaRouteImport } from './routes/_authenticated/sla'
+import { Route as ArtistSlugRouteImport } from './routes/artist.$slug'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as AuthenticatedArtistPageArtistIdRouteImport } from './routes/_authenticated/artist-page.$artistId'
-import { Route as ApiPublicHooksConfirmPropagationRouteImport } from './routes/api/public/hooks/confirm-propagation'
+import { Route as AuthenticatedArtistsArtistIdRouteImport } from './routes/_authenticated/artists.$artistId'
 import { Route as ApiPublicArtistSlugRouteImport } from './routes/api/public/artist.$slug'
+import { Route as ApiPublicHooksConfirmPropagationRouteImport } from './routes/api/public/hooks/confirm-propagation'
 import { Route as ApiPublicArtistsIdFooterSnippetRouteImport } from './routes/api/public/artists.$id.footer-snippet'
 
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InviteTokenRoute = InviteTokenRouteImport.update({
-  id: '/invite/$token',
-  path: '/invite/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ArtistSlugRoute = ArtistSlugRouteImport.update({
-  id: '/artist/$slug',
-  path: '/artist/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedSlaRoute = AuthenticatedSlaRouteImport.update({
-  id: '/sla',
-  path: '/sla',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAuditsRoute = AuthenticatedAuditsRouteImport.update({
@@ -75,34 +50,59 @@ const AuthenticatedAuditsRoute = AuthenticatedAuditsRouteImport.update({
   path: '/audits',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedArtistsArtistIdRoute =
-  AuthenticatedArtistsArtistIdRouteImport.update({
-    id: '/artists/$artistId',
-    path: '/artists/$artistId',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
+const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSlaRoute = AuthenticatedSlaRouteImport.update({
+  id: '/sla',
+  path: '/sla',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ArtistSlugRoute = ArtistSlugRouteImport.update({
+  id: '/artist/$slug',
+  path: '/artist/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedArtistPageArtistIdRoute =
   AuthenticatedArtistPageArtistIdRouteImport.update({
     id: '/artist-page/$artistId',
     path: '/artist-page/$artistId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const ApiPublicHooksConfirmPropagationRoute =
-  ApiPublicHooksConfirmPropagationRouteImport.update({
-    id: '/api/public/hooks/confirm-propagation',
-    path: '/api/public/hooks/confirm-propagation',
-    getParentRoute: () => rootRouteImport,
+const AuthenticatedArtistsArtistIdRoute =
+  AuthenticatedArtistsArtistIdRouteImport.update({
+    id: '/artists/$artistId',
+    path: '/artists/$artistId',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const ApiPublicArtistSlugRoute = ApiPublicArtistSlugRouteImport.update({
   id: '/api/public/artist/$slug',
   path: '/api/public/artist/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksConfirmPropagationRoute =
+  ApiPublicHooksConfirmPropagationRouteImport.update({
+    id: '/api/public/hooks/confirm-propagation',
+    path: '/api/public/hooks/confirm-propagation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicArtistsIdFooterSnippetRoute =
   ApiPublicArtistsIdFooterSnippetRouteImport.update({
     id: '/api/public/artists/$id/footer-snippet',
@@ -231,11 +231,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -245,53 +245,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/invite/$token': {
-      id: '/invite/$token'
-      path: '/invite/$token'
-      fullPath: '/invite/$token'
-      preLoaderRoute: typeof InviteTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/artist/$slug': {
-      id: '/artist/$slug'
-      path: '/artist/$slug'
-      fullPath: '/artist/$slug'
-      preLoaderRoute: typeof ArtistSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/sla': {
-      id: '/_authenticated/sla'
-      path: '/sla'
-      fullPath: '/sla'
-      preLoaderRoute: typeof AuthenticatedSlaRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports': {
-      id: '/_authenticated/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof AuthenticatedReportsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/audits': {
@@ -301,11 +266,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAuditsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports': {
+      id: '/_authenticated/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthenticatedReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/sla': {
+      id: '/_authenticated/sla'
+      path: '/sla'
+      fullPath: '/sla'
+      preLoaderRoute: typeof AuthenticatedSlaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/artist/$slug': {
+      id: '/artist/$slug'
+      path: '/artist/$slug'
+      fullPath: '/artist/$slug'
+      preLoaderRoute: typeof ArtistSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/artist-page/$artistId': {
+      id: '/_authenticated/artist-page/$artistId'
+      path: '/artist-page/$artistId'
+      fullPath: '/artist-page/$artistId'
+      preLoaderRoute: typeof AuthenticatedArtistPageArtistIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/artists/$artistId': {
@@ -315,25 +322,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedArtistsArtistIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/artist-page/$artistId': {
-      id: '/_authenticated/artist-page/$artistId'
-      path: '/artist-page/$artistId'
-      fullPath: '/artist-page/$artistId'
-      preLoaderRoute: typeof AuthenticatedArtistPageArtistIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/api/public/artist/$slug': {
+      id: '/api/public/artist/$slug'
+      path: '/api/public/artist/$slug'
+      fullPath: '/api/public/artist/$slug'
+      preLoaderRoute: typeof ApiPublicArtistSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/confirm-propagation': {
       id: '/api/public/hooks/confirm-propagation'
       path: '/api/public/hooks/confirm-propagation'
       fullPath: '/api/public/hooks/confirm-propagation'
       preLoaderRoute: typeof ApiPublicHooksConfirmPropagationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/artist/$slug': {
-      id: '/api/public/artist/$slug'
-      path: '/api/public/artist/$slug'
-      fullPath: '/api/public/artist/$slug'
-      preLoaderRoute: typeof ApiPublicArtistSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/artists/$id/footer-snippet': {
